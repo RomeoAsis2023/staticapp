@@ -1,6 +1,6 @@
 // Pure JavaScript - no backend needed
 ShopifyApp.init({
-  apiKey: "YOUR_API_KEY_HERE", // ← Replace with your app's API key
+  apiKey: "ef270783ca1996cfb7dad3912f8355a6", // ← Replace with your app's API key
   shopOrigin: "https://" + window.location.hostname,
 });
 
