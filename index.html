@@ -3,94 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shopify App Proxy</title>
-  <style>
-    /* ---- Minimal styling (feel free to delete) ---- */
-    body {font-family: system-ui, sans-serif; margin: 2rem; background:#f9f9f9;}
-    pre {background:#fff; padding:1rem; border:1px solid #ddd; overflow:auto;}
-    .error {color:#b00;}
-    .success {color:#070;}
-  </style>
+  <title>Custom Text Field App</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
 </head>
 <body>
+  <div class="container">
+    <h1>Custom Text Field App</h1>
+    <p>This app adds a <strong>custom text field</strong> to all products.</p>
+    <p>Go to any product → scroll down → you'll see <strong>"Engraving Text"</strong> field!</p>
+    <button onclick="showToast()">Test Toast</button>
+  </div>
 
-<h1>Shopify App Proxy (GitHub Pages)</h1>
-
-<div id="output">
-  <p>Verifying signature…</p>
-</div>
-
-<script>
-/* ==========================================================
-   Shopify App Proxy – pure JS verification
-   Works with any liquid `{{ content_for_layout }}` call:
-   /a/proxy/myendpoint?shop=myshop.myshopify.com&path_prefix=/apps/myproxy&...
-   ========================================================== */
-(function () {
-  // ---- 1. Grab all query params ------------------------------------------------
-  const params = new URLSearchParams(location.search);
-  const shop        = params.get('shop');
-  const path_prefix = params.get('path_prefix');   // e.g. /apps/myproxy
-  const timestamp   = params.get('timestamp');
-  const signature   = params.get('signature');
-  const queryString = params.get('query_string') || ''; // any extra params after ?
-
-  // Remove Shopify-added params that are *not* part of the signed message
-  const signedParams = {};
-  for (const [k, v] of params.entries()) {
-    if (!['signature', 'hmac'].includes(k)) signedParams[k] = v;
-  }
-
-  // ---- 2. Re-create the message exactly as Shopify does -----------------------
-  // Message = key1=value1&key2=value2… (keys sorted alphabetically)
-  const messageParts = Object.keys(signedParams)
-    .sort()
-    .map(k => `${k}=${signedParams[k]}`)
-    .join('&');
-
-  // ---- 3. Compute HMAC-SHA256 using your **Proxy Shared Secret** -------------
-  // Replace YOUR_SHARED_SECRET with the secret you set in Shopify admin
-  const SHARED_SECRET = '%%SHOPIFY_PROXY_SECRET%%';   // <-- CHANGE THIS!
-
-  async function hmacSha256(key, message) {
-    const enc = new TextEncoder();
-    const keyBytes = enc.encode(key);
-    const msgBytes = enc.encode(message);
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw', keyBytes, {name: 'HMAC', hash: 'SHA-256'}, false, ['sign']
-    );
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, msgBytes);
-    return Array.from(new Uint8Array(signature))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  // ---- 4. Verify --------------------------------------------------------------
-  (async () => {
-    const output = document.getElementById('output');
-    try {
-      const computed = await hmacSha256(SHARED_SECRET, messageParts);
-      if (computed !== signature) throw new Error('Invalid signature');
-
-      // ---- 5. SUCCESS – build your JSON response ------------------------------
-      const response = {
-        message: 'Hello from GitHub Pages!',
-        shop: shop,
-        timestamp: timestamp,
-        path: location.pathname.replace(path_prefix, ''), // the part after proxy prefix
-        extra: Object.fromEntries(params.entries())      // all original params
-      };
-
-      // Send JSON back to Shopify (Liquid will receive it as `content_for_layout`)
-      output.innerHTML = `<pre class="success">${JSON.stringify(response, null, 2)}</pre>`;
-
-      // OPTIONAL: Force JSON header (GitHub Pages ignores <meta> headers, but Shopify reads body)
-      document.body.setAttribute('data-proxy-response', JSON.stringify(response));
-    } catch (err) {
-      output.innerHTML = `<pre class="error">Error: ${err.message}</pre>`;
-    }
-  })();
-})();
-</script>
-
+  <script src="script.js"></script>
 </body>
 </html>
