@@ -8,52 +8,68 @@
   <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
 </head>
 <body>
-  <h1>Shopify Products</h1>
-    <div id="products-container" class="products-grid">
-        <div class="loading">Loading products...</div>
-    </div>
+ <button onclick="fetchProducts()">Fetch Products</button>
+    
+    <div id="products"></div>
 
     <script>
-        async function loadProducts() {
-            const storeUrl = 'https://d2cdesigntestromeo.myshopify.com'; // Replace with actual store URL
-            const container = document.getElementById('products-container');
+        async function fetchProducts() {
+            const shop = 'https://d2cdesigntestromeo.myshopify.com';
+            const clientId = '%%SHOPIFY_API_KEY%%';
+            const clientSecret = '%%SHOPIFY_PROXY_SECRET%%';
+            const apiVersion = '2025-10';
+
+        
+            // Basic Auth credentials
+            const credentials = btoa(`${clientId}:${clientSecret}`);
             
+            // REST API endpoint for products (simpler for plain JS; GraphQL would require POST body)
+            const url = `https://${shop}/admin/api/${apiVersion}/products.json?limit=5`; // Limit to 5 for demo
+
             try {
-                const response = await fetch(`${storeUrl}/products.json`);
-                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Basic ${credentials}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
                 if (!response.ok) {
-                    throw new Error(`Failed to load products: ${response.status}`);
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 const data = await response.json();
-                
-                if (data.products && data.products.length > 0) {
-                    container.innerHTML = data.products.map(product => `
-                        <div class="product-card">
-                            <img src="${product.images[0]?.src || 'https://via.placeholder.com/250'}" 
-                                 alt="${product.title}" 
-                                 class="product-image">
-                            <h3>${product.title}</h3>
-                            <p>$${product.variants[0]?.price || 'Price unavailable'}</p>
-                            <button onclick="viewProduct('${product.handle}')">View Details</button>
-                        </div>
-                    `).join('');
-                } else {
-                    container.innerHTML = '<div class="error">No products found</div>';
-                }
-                
+                displayProducts(data.products);
             } catch (error) {
-                container.innerHTML = `<div class="error">${error.message}</div>`;
+                console.error('Error fetching products:', error);
+                document.getElementById('products').innerHTML = `<p>Error: ${error.message}</p>`;
             }
         }
 
-        function viewProduct(handle) {
-            window.open(`https://d2cdesigntestromeo.myshopify.com/products/${handle}`, '_blank');
-        }
+        function displayProducts(products) {
+            const container = document.getElementById('products');
+            if (products.length === 0) {
+                container.innerHTML = '<p>No products found.</p>';
+                return;
+            }
 
-        // Load products when page loads
-        loadProducts();
+            container.innerHTML = `<h2>Products (${products.length}):</h2>`;
+            products.forEach(product => {
+                const div = document.createElement('div');
+                div.className = 'product';
+                div.innerHTML = `
+                    <h3>${product.title}</h3>
+                    <p>ID: ${product.id}</p>
+                    <p>Handle: ${product.handle}</p>
+                    <p>Price: $${product.variants[0]?.price || 'N/A'}</p>
+                    <img src="${product.images[0]?.src || ''}" alt="${product.title}" style="max-width: 200px;" onerror="this.style.display='none';">
+                `;
+                container.appendChild(div);
+            });
+        }
     </script>
 </body>
 </html>
+
 
