@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Shop Origin Demo</title>
+  <title>Shop Origin + Products</title>
   <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
   <style>
     body{font-family:system-ui,sans-serif;background:#f6f6f6;padding:2rem;}
     .box{background:#fff;padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);max-width:600px;margin:auto;}
     code{background:#eee;padding:2px 6px;border-radius:4px;}
+    .product {border:1px solid #ddd;padding:10px;margin:10px 0;border-radius:6px;}
+    .product img {max-height:60px;margin-right:10px;}
   </style>
 </head>
 <body>
@@ -15,9 +17,9 @@
 
   <script>
     const params = new URLSearchParams(location.search);
-    const shop   = params.get('shop');
+    const shop = params.get('shop');
     const origin = shop ? (shop.startsWith('http') ? shop : `https://${shop}`) : null;
-
+    
     if (!origin) {
       document.getElementById('output').innerHTML = '<p style="color:red;">Open from Shopify admin.</p>';
       throw new Error('No shop parameter');
@@ -29,10 +31,43 @@
       forceRedirect: true
     });
 
+    // === YOUR WORKING CODE ===
     document.getElementById('output').innerHTML = `
       <p><strong>Shop origin:</strong> <code>${origin}</code></p>
-      <p>App Bridge ready – you can now call <code>ShopifyApp.accessToken</code> safely.</p>
+      <p>App Bridge ready – loading products from <code>/products.json</code>…</p>
     `;
+
+    // === NEW: Load /products.json ===
+    async function loadProducts() {
+      const PRODUCTS_URL = `${origin}/products.json`;
+      const PROXY_URL = `https://api.allorigins.win/fetch?url=${encodeURIComponent(PRODUCTS_URL)}`;
+
+      try {
+        const response = await fetch(PROXY_URL);
+        const data = await response.json();
+        const products = data.contents ? JSON.parse(data.contents).products : [];
+
+        // === DISPLAY PRODUCTS ===
+        document.getElementById('output').innerHTML += `
+          <p><strong>Found ${products.length} products!</strong></p>
+          ${products.slice(0, 10).map(p => `
+            <div class="product">
+              ${p.images[0] ? `<img src="${p.images[0].src}" alt="${p.title}">` : ''}
+              <strong>${p.title}</strong> - $${p.variants[0].price}
+            </div>
+          `).join('')}
+          ${products.length > 10 ? `<p><em>... and ${products.length - 10} more</em></p>` : ''}
+        `;
+
+      } catch (error) {
+        document.getElementById('output').innerHTML += `<p style="color:red;">Error: ${error.message}</p>`;
+      }
+    }
+
+    // === AUTO LOAD ===
+    ShopifyApp.ready(() => {
+      loadProducts();
+    });
   </script>
 </body>
 </html>
