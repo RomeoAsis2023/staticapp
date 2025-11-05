@@ -3,30 +3,37 @@ name: Deploy Shopify Proxy
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:   # allows manual run
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed for gh-pages
+      contents: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Inject Shopify Proxy Secret
+      - name: Inject Shopify Proxy Secrets
         env:
           SHOPIFY_PROXY_SECRET: ${{ secrets.SHOPIFY_PROXY_SECRET }}
+          SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
         run: |
           if [ -z "$SHOPIFY_PROXY_SECRET" ]; then
             echo "Error: SHOPIFY_PROXY_SECRET is not set!"
             exit 1
           fi
+          if [ -z "$SHOPIFY_API_KEY" ]; then
+            echo "Error: SHOPIFY_API_KEY is not set!"
+            exit 1
+          fi
           sed -i "s|%%SHOPIFY_PROXY_SECRET%%|$SHOPIFY_PROXY_SECRET|g" index.html
+          sed -i "s|%%SHOPIFY_API_KEY%%|$SHOPIFY_API_KEY|g" index.html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .
-          force_orphan: true   # cleaner history
+          force_orphan: true
