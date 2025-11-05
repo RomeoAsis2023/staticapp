@@ -8,13 +8,52 @@
   <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
 </head>
 <body>
-  <div class="container">
-    <h1>Custom Text Field App</h1>
-    <p>This app adds a <strong>custom text field</strong> to all products.</p>
-    <p>Go to any product → scroll down → you'll see <strong>"Engraving Text"</strong> field!</p>
-    <button onclick="showToast()">Test Toast</button>
-  </div>
+  <h1>Shopify Products</h1>
+    <div id="products-container" class="products-grid">
+        <div class="loading">Loading products...</div>
+    </div>
 
-  <script src="script.js"></script>
+    <script>
+        async function loadProducts() {
+            const storeUrl = 'https://d2cdesigntestromeo.myshopify.com'; // Replace with actual store URL
+            const container = document.getElementById('products-container');
+            
+            try {
+                const response = await fetch(`${storeUrl}/products.json`);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load products: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.products && data.products.length > 0) {
+                    container.innerHTML = data.products.map(product => `
+                        <div class="product-card">
+                            <img src="${product.images[0]?.src || 'https://via.placeholder.com/250'}" 
+                                 alt="${product.title}" 
+                                 class="product-image">
+                            <h3>${product.title}</h3>
+                            <p>$${product.variants[0]?.price || 'Price unavailable'}</p>
+                            <button onclick="viewProduct('${product.handle}')">View Details</button>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="error">No products found</div>';
+                }
+                
+            } catch (error) {
+                container.innerHTML = `<div class="error">${error.message}</div>`;
+            }
+        }
+
+        function viewProduct(handle) {
+            window.open(`https://d2cdesigntestromeo.myshopify.com/products/${handle}`, '_blank');
+        }
+
+        // Load products when page loads
+        loadProducts();
+    </script>
 </body>
 </html>
+
