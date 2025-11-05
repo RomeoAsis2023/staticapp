@@ -35,28 +35,27 @@
 
     document.getElementById('output').innerHTML = `
       <p><strong>Shop origin:</strong> <code>${origin}</code></p>
-      <p class="loading">App Bridge ready – loading products from <code>/products.json</code>…</p>
+      <p class="loading">App Bridge ready – loading products from <code>/products.json?pwd=romeotest</code>…</p>
     `;
 
-    // === Fetch /products.json ===
+    // === YOUR EXACT WORKING PROXY + PASSWORD ===
     async function loadProducts() {
-      // Optional: Add password for dev store
-      const PASSWORD = 'your_dev_password_here';  // Replace if needed, or '' for no password
-      const PRODUCTS_URL = `${origin}/products.json${PASSWORD ? '?pwd=' + PASSWORD : ''}`;
-      
-      // Use reliable CORS proxy
-      const PROXY_URL = `https://corsproxy.io/?${encodeURIComponent(PRODUCTS_URL)}`;
+      const PRODUCTS_URL = `${origin}/products.json?pwd=romeotest`;
+      const PROXY_URL = `https://cors-anywhere.herokuapp.com/${PRODUCTS_URL}`;
 
       try {
         const response = await fetch(PROXY_URL);
-        if (!response.ok) throw new Error(`HTTP ${response.status}: Proxy failed`);
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`HTTP ${response.status}: ${text}`);
+        }
 
         const jsonData = await response.json();
         const products = jsonData.products || [];
 
         const output = document.getElementById('output');
         if (!products.length) {
-          output.innerHTML += '<p class="error">No products found (publish some in Admin or check password).</p>';
+          output.innerHTML += '<p class="error">No products found (publish some in Admin).</p>';
           return;
         }
 
@@ -74,7 +73,7 @@
       } catch (error) {
         const output = document.getElementById('output');
         output.innerHTML += `<p class="error">Error: ${error.message}</p>`;
-        console.error('Full error:', error);  // Check F12 console
+        console.error('Full error:', error);
       }
     }
 
