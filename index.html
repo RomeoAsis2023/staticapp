@@ -21,7 +21,7 @@
     const params = new URLSearchParams(location.search);
     const shop = params.get('shop');
     const origin = shop ? (shop.startsWith('http') ? shop : `https://${shop}`) : null;
-
+    
     if (!origin) {
       document.getElementById('output').innerHTML = '<p style="color:red;">Open from Shopify admin.</p>';
       throw new Error('No shop parameter');
@@ -33,54 +33,54 @@
       forceRedirect: true
     });
 
+    // === YOUR WORKING CODE ===
     document.getElementById('output').innerHTML = `
       <p><strong>Shop origin:</strong> <code>${origin}</code></p>
-      <p class="loading">Loading products from <code>/products.json</code>…</p>
+      <p class="loading">App Bridge ready – loading products from <code>/products.json</code>…</p>
     `;
 
-    // === FIXED: Define the function ===
-    async function getProductsFromJSON(url) {
+    // === Fetch /products.json ===
+    async function loadProducts() {
+      const PRODUCTS_URL = `${origin}/products.json`;
+      const PROXY_URL = `https://api.allorigins.win/fetch?url=${encodeURIComponent(PRODUCTS_URL)}`;
+
       try {
-        // Use CORS proxy
-        const proxy = 'https://api.allorigins.win/fetch?url=';
-        const response = await fetch(proxy + encodeURIComponent(url));
-        
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const data = await response.json();
-        // allorigins wraps content in .contents
-        return data.contents ? JSON.parse(data.contents).products : [];
+        const response = await fetch(PROXY_URL);
+        if (!response.ok) throw new Error(`Proxy error: ${response.status}`);
+
+        const proxyData = await response.json();
+        if (!proxyData.contents) throw new Error('No content returned');
+
+        const jsonData = JSON.parse(proxyData.contents);
+        const products = jsonData.products || [];
+
+        const output = document.getElementById('output');
+        if (!products.length) {
+          output.innerHTML += '<p class="error">No products found (publish some in Admin).</p>';
+          return;
+        }
+
+        output.innerHTML += `
+          <p><strong>Found ${products.length} products!</strong></p>
+          ${products.slice(0, 10).map(p => `
+            <div class="product">
+              ${p.images[0] ? `<img src="${p.images[0].src}" alt="${p.title}">` : '[No Image]'}
+              <strong>${p.title}</strong> - $${p.variants[0]?.price || 'N/A'}
+            </div>
+          `).join('')}
+          ${products.length > 10 ? `<p><em>... and ${products.length - 10} more</em></p>` : ''}
+        `;
+
       } catch (error) {
-        console.error('Error:', error);
-        return null;
+        const output = document.getElementById('output');
+        output.innerHTML += `<p class="error">Error: ${error.message}</p>`;
+        console.error('Full error:', error);  // Check browser console for details
       }
-    }
-
-    // === Display products ===
-    function displayProducts(products) {
-      const output = document.getElementById('output');
-      if (!products || products.length === 0) {
-        output.innerHTML += '<p class="error">No products found.</p>';
-        return;
-      }
-
-      output.innerHTML += `
-        <p><strong>Found ${products.length} products!</strong></p>
-        ${products.slice(0, 10).map(p => `
-          <div class="product">
-            ${p.images[0] ? `<img src="${p.images[0].src}" alt="${p.title}">` : ''}
-            <strong>${p.title}</strong> - $${p.variants[0].price}
-          </div>
-        `).join('')}
-        ${products.length > 10 ? `<p><em>... and ${products.length - 10} more</em></p>` : ''}
-      `;
     }
 
     // === AUTO LOAD ===
-    ShopifyApp.ready(async () => {
-      const storeUrl = `${origin}/products.json`;
-      const products = await getProductsFromJSON(storeUrl);
-      displayProducts(products);
+    ShopifyApp.ready(() => {
+      loadProducts();
     });
   </script>
 </body>
