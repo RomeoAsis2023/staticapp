@@ -16,7 +16,7 @@
 </head>
 <body>
 
-
+<div class="box" id="output">Loading…</div>
   <script>
     const params = new URLSearchParams(location.search);
     const shop = params.get('shop');
@@ -33,9 +33,16 @@
       forceRedirect: true
     });
 
+       // === YOUR WORKING CODE ===
+    document.getElementById('output').innerHTML = `
+      <p><strong>Shop origin:</strong> <code>${origin}</code></p>
+    
+    `;
+
+
     async function getProductsFromJSON(storeUrl) {
     try {
-        const response = await fetch(`${storeUrl}/products.json`);
+        const response = await fetch(`${origin}/products.json`);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -66,4 +73,5 @@ getProductsFromJSON(storeUrl).then(products => {
   </script>
 </body>
 </html>
+
 
