@@ -1,11 +1,12 @@
-# shopify.extension.toml
-name = "Custom Text Field"
-description = "Adds a custom text field to products"
-type = "product_metafield"
+# shopify.app.toml
+name = "Custom Text Field App"
+client_id = "ef270783ca1996cfb7dad3912f8355a6"  # Replace with your API key
 
-[metafields.product]
-namespace = "custom"
-key = "engraving_text"
-name = "Engraving Text"
-description = "Text to engrave on the product"
-type = "single_line_text_field"
+[requirements]
+api_version = "2025-10"
+
+[webhooks]
+# No webhooks needed for this
+
+[access_scopes]
+scopes = "read_products"
