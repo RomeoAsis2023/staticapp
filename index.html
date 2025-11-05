@@ -9,12 +9,94 @@
 </head>
 <body>
   <div class="container">
-    <h1>Custom Text Field App</h1>
-    <p>This app adds a <strong>custom text field</strong> to all products.</p>
-    <p>Go to any product → scroll down → you'll see <strong>"Engraving Text"</strong> field!</p>
-    <button onclick="showToast()">Test Toast</button>
+    <h1>My Products</h1>
+
+    <button id="loadBtn">Load Products</button>
+
+    <div id="loading" class="loading hidden">Loading…</div>
+    <div id="error" class="error hidden"></div>
+
+    <div id="list"></div>
   </div>
+
+<script>
+  // === 1. CONFIG ===
+  const API_KEY = 'ef270783ca1996cfb7dad3912f8355a6';   // ← replace with your Client ID
+  const API_VERSION = '2024-10';        // latest stable version
+
+  // === 2. Init App Bridge (gets us a short-lived access token) ===
+  ShopifyApp.init({
+    apiKey: API_KEY,
+    shopOrigin: new URLSearchParams(location.search).get('shop') || location.hostname
+  });
+
+  // === 3. Helper to call the Admin REST API ===
+  async function shopifyGet(path, params = {}) {
+    const url = new URL(`https://${ShopifyApp.shop}/admin/api/${API_VERSION}${path}`);
+    Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
+
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Shopify-Access-Token': ShopifyApp.accessToken, // <-- secure token
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(`Shopify error ${resp.status}: ${txt}`);
+    }
+    return resp.json();
+  }
+
+  // === 4. Load products and render them ===
+  async function loadProducts() {
+    const loading = document.getElementById('loading');
+    const errorEl = document.getElementById('error');
+    const list = document.getElementById('list');
+    const btn = document.getElementById('loadBtn');
+
+    // UI state
+    loading.classList.remove('hidden');
+    errorEl.classList.add('hidden');
+    list.innerHTML = '';
+    btn.disabled = true;
+
+    try {
+      const data = await shopifyGet('/products.json', { limit: 10 });
+      const products = data.products;
+
+      if (!products.length) {
+        list.innerHTML = '<p>No products found.</p>';
+        return;
+      }
+
+      list.innerHTML = products.map(p => `
+        <div class="product">
+          ${p.images[0] ? `<img src="${p.images[0].src}" alt="${p.title}">` : ''}
+          <strong>${p.title}</strong> – $${p.variants[0].price}
+        </div>
+      `).join('');
+
+    } catch (err) {
+      console.error(err);
+      errorEl.textContent = err.message;
+      errorEl.classList.remove('hidden');
+    } finally {
+      loading.classList.add('hidden');
+      btn.disabled = false;
+    }
+  }
+
+  // === 5. Hook the button ===
+  document.getElementById('loadBtn').addEventListener('click', loadProducts);
+
+  // Optional: auto-load on first visit
+  // loadProducts();
+</script>
 
   <script src="script.js"></script>
 </body>
 </html>
+
