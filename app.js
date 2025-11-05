@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   //     https://YOUR-DEPLOYMENT.netlify.app/.netlify/functions/token
   // --------------------------------------------------------------------- //
   const tokenResponse = await fetch(
-    `https://YOUR-DEPLOYMENT.netlify.app/.netlify/functions/token?shop=${shop}`
+    `https://neon-hamster-da1076.netlify.app/.netlify/functions/token?shop=${shop}`
   );
   const { access_token } = await tokenResponse.json();
   if (!access_token) {
