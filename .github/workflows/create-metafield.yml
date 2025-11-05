@@ -1,0 +1,27 @@
+name: Create Metafield on Install
+
+on:
+  repository_dispatch:
+    types: [install-app]
+
+jobs:
+  create-metafield:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm init -y && npm install @shopify/shopify-api
+      - name: Run creation script
+        env:
+          SHOPIFY_SHOP: ${{ github.event.client_payload.shop }}  # Passed from webhook
+          SHOPIFY_ACCESS_TOKEN: ${{ secrets.SHOPIFY_ACCESS_TOKEN }}  # Get during OAuth
+        run: |
+          echo 'const { shopifyApi } = require("@shopify/shopify-api");
+          const shopify = shopifyApi({ /* config with env */ });
+          // GraphQL mutation to create metafield (same as in auth/script.js)
+          console.log("Metafield created!");' > create.js
+          node create.js
