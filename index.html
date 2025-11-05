@@ -2,48 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Engraving Text App</title>
-
-  <!-- Shopify App Bridge + Polaris -->
-  <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
-  <script src="https://unpkg.com/@shopify/app-bridge-utils@3"></script>
-  <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
-
-  <!-- Polaris CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/@shopify/polaris@12/build/esm/styles.css"
-  />
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Custom Text Field App</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
 </head>
 <body>
-  <div id="app">
-    <div class="Polaris-Page">
-      <div class="Polaris-Page__Content">
-        <div class="Polaris-Card" id="metafield-card">
-          <div class="Polaris-Card__Header">
-            <h2 class="Polaris-Heading">Engraving Text</h2>
-          </div>
-          <div class="Polaris-Card__Section">
-            <div class="Polaris-FormLayout">
-              <div class="Polaris-Labelled__Label">
-                <label class="Polaris-Label">Text to engrave</label>
-              </div>
-              <input
-                type="text"
-                class="Polaris-TextField__Input"
-                id="engraving-input"
-                placeholder="Enter engraving text…"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="container">
+    <h1>Custom Text Field App</h1>
+    <p>This app adds a <strong>custom text field</strong> to all products.</p>
+    <p>Go to any product → scroll down → you'll see <strong>"Engraving Text"</strong> field!</p>
+    <button onclick="showToast()">Test Toast</button>
   </div>
 
-  <script src="app.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
