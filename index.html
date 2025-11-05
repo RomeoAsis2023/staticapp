@@ -41,19 +41,48 @@
     <div id="products-container" class="loading">Loading products...</div>
   `;
 
-  // Function to get products using Shopify API
+  // Function to get products using Shopify Admin API
   async function getProducts() {
     try {
-      // Use Shopify's API to make authenticated requests
-      const products = await ShopifyApp.makeApiCall({
+      console.log('Fetching products from:', `${origin}/admin/api/2024-01/products.json`);
+      
+      // Use Shopify's embedded app API to make authenticated requests
+      const response = await ShopifyApp.makeApiCall({
         type: 'GET',
         url: '/admin/api/2024-01/products.json',
         dataType: 'json'
       });
       
-      return products.data.products;
+      console.log('API response:', response);
+      return response.data.products;
     } catch (error) {
       console.error('Error fetching products:', error);
+      throw error;
+    }
+  }
+
+  // Alternative method using fetch with session token
+  async function getProductsWithToken() {
+    try {
+      // Get the session token
+      const token = await ShopifyApp.getSessionToken();
+      console.log('Session token obtained');
+      
+      const response = await fetch(`${origin}/admin/api/2024-01/products.json`, {
+        headers: {
+          'X-Shopify-Access-Token': token,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.products;
+    } catch (error) {
+      console.error('Error with token method:', error);
       throw error;
     }
   }
@@ -92,7 +121,8 @@
     container.innerHTML = `
       <div class="error">
         <strong>Error loading products:</strong><br>
-        ${error.message || 'Unknown error'}
+        ${error.message || 'Unknown error'}<br>
+        <small>Check browser console for details</small>
       </div>
     `;
   }
@@ -101,41 +131,31 @@
   ShopifyApp.ready(() => {
     console.log('Shopify app ready, fetching products...');
     
+    // Try the primary method first
     getProducts()
       .then(products => {
-        console.log('Products loaded:', products);
+        console.log('Products loaded via makeApiCall:', products);
         displayProducts(products);
       })
       .catch(error => {
-        console.error('Failed to load products:', error);
-        displayError(error);
+        console.log('Primary method failed, trying token method...', error);
+        // Fallback to token method
+        getProductsWithToken()
+          .then(products => {
+            console.log('Products loaded via token method:', products);
+            displayProducts(products);
+          })
+          .catch(error => {
+            console.error('Both methods failed:', error);
+            displayError(error);
+          });
       });
   });
 
-  // Alternative approach if makeApiCall doesn't work
-  async function getProductsAlternative() {
-    try {
-      // Get the session token first
-      const token = await ShopifyApp.getSessionToken();
-      
-      const response = await fetch(`${origin}/admin/api/2024-01/products.json`, {
-        headers: {
-          'X-Shopify-Access-Token': token,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data.products;
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      throw error;
-    }
-  }
+  // Debug: Log available ShopifyApp methods
+  ShopifyApp.ready(() => {
+    console.log('Available ShopifyApp methods:', Object.keys(ShopifyApp));
+  });
 </script>
 </body>
 </html>
