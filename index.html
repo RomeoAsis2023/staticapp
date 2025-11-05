@@ -2,37 +2,134 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Shop Origin Demo</title>
+  <title>Shopify Products – Auto Load</title>
   <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
   <style>
-    body{font-family:system-ui,sans-serif;background:#f6f6f6;padding:2rem;}
-    .box{background:#fff;padding:1.5rem;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);max-width:600px;margin:auto;}
-    code{background:#eee;padding:2px 6px;border-radius:4px;}
+    body {font-family: system-ui, sans-serif; background:#f6f6f6; padding:2rem; margin:0;}
+    .box {background:#fff; padding:2rem; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.1); max-width:800px; margin:auto;}
+    h1 {color:#1a0dab; text-align:center; margin-top:0;}
+    .product {border-bottom:1px solid #eee; padding:12px 0; display:flex; align-items:center;}
+    .product img {max-height:60px; margin-right:12px; border-radius:4px;}
+    .loading, .error {text-align:center; margin:20px 0; font-weight:bold;}
+    .loading {color:#777;}
+    .error {color:#c00;}
+    .status {font-size:14px; color:#555; text-align:center; margin:10px 0;}
   </style>
 </head>
 <body>
-  <div class="box" id="output">Loading…</div>
+  <div class="box">
+    <h1>Shopify Products</h1>
+    <div id="status" class="status">Initializing App Bridge…</div>
+    <div id="loading" class="loading hidden">Loading all products…</div>
+    <div id="error" class="error hidden"></div>
+    <div id="output"></div>
+  </div>
 
   <script>
+    // === 1. Get shop origin ===
     const params = new URLSearchParams(location.search);
-    const shop   = params.get('shop');
+    const shop = params.get('shop');
     const origin = shop ? (shop.startsWith('http') ? shop : `https://${shop}`) : null;
 
     if (!origin) {
       document.getElementById('output').innerHTML = '<p style="color:red;">Open from Shopify admin.</p>';
-      throw new Error('No shop parameter');
+      throw new Error('Missing ?shop= parameter');
     }
 
+    // === 2. Initialize App Bridge ===
     ShopifyApp.init({
       apiKey: "ef270783ca1996cfb7dad3912f8355a6",
       shopOrigin: origin,
       forceRedirect: true
     });
 
-    document.getElementById('output').innerHTML = `
-      <p><strong>Shop origin:</strong> <code>${origin}</code></p>
-      <p>App Bridge ready – you can now call <code>ShopifyApp.accessToken</code> safely.</p>
-    `;
+    // === 3. Update status ===
+    document.getElementById('status').textContent = `Connected to: ${origin}`;
+
+    // === 4. Fetch helper ===
+    async function shopifyGet(path, params = {}) {
+      const url = new URL(`https://${ShopifyApp.shop}/admin/api/2024-10${path}`);
+      Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
+
+      const resp = await fetch(url, {
+        headers: {
+          'X-Shopify-Access-Token': ShopifyApp.accessToken,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`Shopify ${resp.status}: ${txt}`);
+      }
+      const data = await resp.json();
+      data.link = resp.headers.get('Link'); // for pagination
+      return data;
+    }
+
+    // === 5. Load ALL products with pagination ===
+    async function loadAllProducts() {
+      const loading = document.getElementById('loading');
+      const errorEl = document.getElementById('error');
+      const output = document.getElementById('output');
+
+      loading.classList.remove('hidden');
+      errorEl.classList.add('hidden');
+      output.innerHTML = '';
+
+      let allProducts = [];
+      let nextPage = null;
+
+      try {
+        do {
+          const data = await shopifyGet('/products.json', {
+            limit: 250,
+            page_info: nextPage || undefined
+          });
+
+          allProducts = allProducts.concat(data.products);
+          nextPage = getNextPageInfo(data.link);
+        } while (nextPage);
+
+        // === 6. Display ===
+        output.innerHTML = `
+          <p><strong>Shop origin:</strong> <code>${origin}</code></p>
+          <p><strong>Total products:</strong> ${allProducts.length}</p>
+          <div style="margin-top:20px;">
+            ${allProducts.map(p => `
+              <div class="product">
+                ${p.images[0] ? `<img src="${p.images[0].src}" alt="${p.title}">` : ''}
+                <div>
+                  <strong>${p.title}</strong><br>
+                  <small>$${p.variants[0].price} • ID: ${p.id}</small>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+      } catch (err) {
+        console.error(err);
+        errorEl.textContent = err.message;
+        errorEl.classList.remove('hidden');
+      } finally {
+        loading.classList.add('hidden');
+      }
+    }
+
+    // === 7. Parse Link header for next page ===
+    function getNextPageInfo(linkHeader) {
+      if (!linkHeader) return null;
+      const next = linkHeader.split(',').find(part => part.includes('rel="next"'));
+      if (!next) return null;
+      const match = next.match(/page_info=([^&>]+)/);
+      return match ? match[1] : null;
+    }
+
+    // === 8. AUTO LOAD ON PAGE LOAD ===
+    ShopifyApp.ready(() => {
+      loadAllProducts();
+    });
   </script>
 </body>
 </html>
