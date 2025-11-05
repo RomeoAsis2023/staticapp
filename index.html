@@ -40,10 +40,10 @@
     // === NEW: Load /products.json ===
     async function loadProducts() {
       const PRODUCTS_URL = `${origin}/products.json`;
-      const PROXY_URL = `https://api.allorigins.win/fetch?url=${encodeURIComponent(PRODUCTS_URL)}`;
+    
 
       try {
-        const response = await fetch(PROXY_URL);
+        const response = await fetch(PRODUCTS_URL);
         const data = await response.json();
         const products = data.contents ? JSON.parse(data.contents).products : [];
 
@@ -71,3 +71,4 @@
   </script>
 </body>
 </html>
+
