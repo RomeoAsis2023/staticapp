@@ -44,12 +44,12 @@
   // Function to get products using Shopify Admin API
   async function getProducts() {
     try {
-      console.log('Fetching products from:', `${origin}/admin/api/2024-01/products.json`);
+      console.log('Fetching products from:', `${origin}/admin/api/2025-10/products.json`);
       
       // Use Shopify's embedded app API to make authenticated requests
       const response = await ShopifyApp.makeApiCall({
         type: 'GET',
-        url: '/admin/api/2024-01/products.json',
+        url: '/admin/api/2025-10/products.json',
         dataType: 'json'
       });
       
@@ -68,7 +68,7 @@
       const token = await ShopifyApp.getSessionToken();
       console.log('Session token obtained');
       
-      const response = await fetch(`${origin}/admin/api/2024-01/products.json`, {
+      const response = await fetch(`${origin}/admin/api/2025-10/products.json`, {
         headers: {
           'X-Shopify-Access-Token': token,
           'Content-Type': 'application/json'
@@ -159,3 +159,4 @@
 </script>
 </body>
 </html>
+
