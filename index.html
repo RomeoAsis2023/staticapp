@@ -37,21 +37,23 @@
       <p>App Bridge ready – loading products from <code>/products.json</code>…</p>
     `;
 
-    // === NEW: Load /products.json ===
-    async function loadProducts() {
-      const PRODUCTS_URL = `${origin}/products.json`;
-    
+   
+
+// Usage
+const storeUrl = `${origin}/products.json`;
+getProductsFromJSON(storeUrl).then(products => {
     if (products) {
         console.log('Products:', products);
         displayProducts(products);
     } else {
         console.log('No products found or access denied');
     }
-    }
+});
 
    
   </script>
 </body>
 </html>
+
 
 
