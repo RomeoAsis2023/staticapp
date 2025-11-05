@@ -1,0 +1,17 @@
+name: Deploy Proxy
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject secret
+        run: |
+          sed -i "s|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|${{ secrets.SHOPIFY_PROXY_SECRET }}|g" index.html
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
