@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <div class="box" id="output">Loading…</div>
+
 
   <script>
     const params = new URLSearchParams(location.search);
@@ -33,54 +33,37 @@
       forceRedirect: true
     });
 
-    document.getElementById('output').innerHTML = `
-      <p><strong>Shop origin:</strong> <code>${origin}</code></p>
-      <p class="loading">App Bridge ready – loading products from <code>/products.json?pwd=romeotest</code>…</p>
-    `;
-
-    // === YOUR EXACT WORKING PROXY + PASSWORD ===
-    async function loadProducts() {
-      const PRODUCTS_URL = `${origin}/products.json?pwd=romeotest`;
-      const PROXY_URL = `https://cors-anywhere.herokuapp.com/${PRODUCTS_URL}`;
-
-      try {
-        const response = await fetch(PROXY_URL);
+    async function getProductsFromJSON(storeUrl) {
+    try {
+        const response = await fetch(`${storeUrl}/products.json`);
+        
         if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`HTTP ${response.status}: ${text}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        const jsonData = await response.json();
-        const products = jsonData.products || [];
-
-        const output = document.getElementById('output');
-        if (!products.length) {
-          output.innerHTML += '<p class="error">No products found (publish some in Admin).</p>';
-          return;
-        }
-
-        output.innerHTML += `
-          <p><strong>Found ${products.length} products!</strong></p>
-          ${products.slice(0, 10).map(p => `
-            <div class="product">
-              ${p.images[0] ? `<img src="${p.images[0].src}" alt="${p.title}">` : '[No Image]'}
-              <strong>${p.title}</strong> - $${p.variants[0]?.price || 'N/A'}
-            </div>
-          `).join('')}
-          ${products.length > 10 ? `<p><em>... and ${products.length - 10} more</em></p>` : ''}
-        `;
-
-      } catch (error) {
-        const output = document.getElementById('output');
-        output.innerHTML += `<p class="error">Error: ${error.message}</p>`;
-        console.error('Full error:', error);
-      }
+        
+        const data = await response.json();
+        return data.products;
+    } catch (error) {
+        console.error('Error fetching products:', error);
+        return null;
     }
+}
 
-    // === AUTO LOAD ===
-    ShopifyApp.ready(() => {
-      loadProducts();
-    });
+// Usage
+const storeUrl = `${origin}`;
+getProductsFromJSON(storeUrl).then(products => {
+    if (products) {
+        console.log('Products:', products);
+        displayProducts(products);
+    } else {
+        console.log('No products found or access denied');
+    }
+});
+
+ 
+
+  
   </script>
 </body>
 </html>
+
