@@ -41,34 +41,17 @@
     async function loadProducts() {
       const PRODUCTS_URL = `${origin}/products.json`;
     
-
-      try {
-        const response = await fetch(PRODUCTS_URL);
-        const data = await response.json();
-        const products = data.contents ? JSON.parse(data.contents).products : [];
-
-        // === DISPLAY PRODUCTS ===
-        document.getElementById('output').innerHTML += `
-          <p><strong>Found ${products.length} products!</strong></p>
-          ${products.slice(0, 10).map(p => `
-            <div class="product">
-              ${p.images[0] ? `<img src="${p.images[0].src}" alt="${p.title}">` : ''}
-              <strong>${p.title}</strong> - $${p.variants[0].price}
-            </div>
-          `).join('')}
-          ${products.length > 10 ? `<p><em>... and ${products.length - 10} more</em></p>` : ''}
-        `;
-
-      } catch (error) {
-        document.getElementById('output').innerHTML += `<p style="color:red;">Error: ${error.message}</p>`;
-      }
+    if (products) {
+        console.log('Products:', products);
+        displayProducts(products);
+    } else {
+        console.log('No products found or access denied');
+    }
     }
 
-    // === AUTO LOAD ===
-    ShopifyApp.ready(() => {
-      loadProducts();
-    });
+   
   </script>
 </body>
 </html>
+
 
