@@ -9,4 +9,5 @@ api_version = "2025-10"
 # No webhooks needed for this
 
 [access_scopes]
-scopes = "read_products"
+scopes = "read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_products"
+
