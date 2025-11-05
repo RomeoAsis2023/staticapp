@@ -33,7 +33,6 @@
       forceRedirect: true
     });
 
-    // === YOUR WORKING CODE ===
     document.getElementById('output').innerHTML = `
       <p><strong>Shop origin:</strong> <code>${origin}</code></p>
       <p class="loading">App Bridge ready – loading products from <code>/products.json</code>…</p>
@@ -41,22 +40,23 @@
 
     // === Fetch /products.json ===
     async function loadProducts() {
-      const PRODUCTS_URL = `${origin}/products.json`;
-      const PROXY_URL = `https://api.allorigins.win/fetch?url=${encodeURIComponent(PRODUCTS_URL)}`;
+      // Optional: Add password for dev store
+      const PASSWORD = 'your_dev_password_here';  // Replace if needed, or '' for no password
+      const PRODUCTS_URL = `${origin}/products.json${PASSWORD ? '?pwd=' + PASSWORD : ''}`;
+      
+      // Use reliable CORS proxy
+      const PROXY_URL = `https://corsproxy.io/?${encodeURIComponent(PRODUCTS_URL)}`;
 
       try {
         const response = await fetch(PROXY_URL);
-        if (!response.ok) throw new Error(`Proxy error: ${response.status}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: Proxy failed`);
 
-        const proxyData = await response.json();
-        if (!proxyData.contents) throw new Error('No content returned');
-
-        const jsonData = JSON.parse(proxyData.contents);
+        const jsonData = await response.json();
         const products = jsonData.products || [];
 
         const output = document.getElementById('output');
         if (!products.length) {
-          output.innerHTML += '<p class="error">No products found (publish some in Admin).</p>';
+          output.innerHTML += '<p class="error">No products found (publish some in Admin or check password).</p>';
           return;
         }
 
@@ -74,7 +74,7 @@
       } catch (error) {
         const output = document.getElementById('output');
         output.innerHTML += `<p class="error">Error: ${error.message}</p>`;
-        console.error('Full error:', error);  // Check browser console for details
+        console.error('Full error:', error);  // Check F12 console
       }
     }
 
