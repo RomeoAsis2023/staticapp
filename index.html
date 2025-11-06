@@ -19,7 +19,6 @@
 
   <h1>Products from this store</h1>
   <button id="loadBtn">Load Products</button>
-  <button id="manualBtn" style="display:none;">Enter Code Manually</button>
   <div id="output"></div>
 
   <script>
@@ -31,7 +30,6 @@
 
     const output = document.getElementById('output');
     const btn    = document.getElementById('loadBtn');
-    const manualBtn = document.getElementById('manualBtn');
 
     function getShop() {
       const shop = new URLSearchParams(location.search).get('shop');
@@ -40,30 +38,15 @@
 
     function startOAuth(shop) {
       const url = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=staticapp`;
-      
-      // Try top-level redirect first
-      try {
-        window.top.location.href = url;
-        return;
-      } catch (e) {}
-
-      // Fallback: open in new tab
-      const win = window.open(url, '_blank');
-      if (win) {
-        output.innerHTML = '<p class="info">OAuth opened in new tab. Approve, then return here and click "Load Products" again.</p>';
-        manualBtn.style.display = 'inline-block';
-      } else {
-        output.innerHTML = '<p class="error">Popup blocked. Please allow popups or use manual mode.</p>';
-        manualBtn.style.display = 'inline-block';
-      }
+      window.top.location.href = url;
     }
 
     async function exchangeCode(shop, code) {
-      const tokenUrl = `${PROXY_URL}/token`;
+      const tokenUrl = `${shop}/admin/oauth/access_token`;
       const res = await fetch(tokenUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shop, code, client_id: CLIENT_ID, client_secret: CLIENT_SECRET })
+        body: JSON.stringify({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, code })
       });
       if (!res.ok) {
         const txt = await res.text();
@@ -75,7 +58,10 @@
     async function loadProductsWithToken(token, shop) {
       const proxyUrl = `${PROXY_URL}/admin/api/${API_VERSION}/products.json?limit=10&shop=${encodeURIComponent(shop)}&token=${token}`;
       const res = await fetch(proxyUrl);
-      if (!res.ok) throw new Error(`Proxy error: ${await res.text()}`);
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Proxy error: ${txt}`);
+      }
 
       const { products } = await res.json();
       if (!products?.length) {
@@ -98,42 +84,31 @@
     }
 
     async function loadProducts() {
-      output.innerHTML = '';
+      output.innerHTML = '<p class="loading">Loading...</p>';
       btn.disabled = true;
-      manualBtn.style.display = 'none';
 
       const shop = getShop();
-      if (shop) {
-        const code = new URLSearchParams(location.search).get('code');
-        if (code) {
-          output.innerHTML = '<p class="loading">Exchanging token...</p>';
-          try {
-            const token = await exchangeCode(shop, code);
-            await loadProductsWithToken(token, shop);
-          } catch (err) {
-            output.innerHTML = `<p class="error">${err.message}</p>`;
-          }
-        } else {
-          startOAuth(shop);
-        }
-      } else {
+      if (!shop) {
         output.innerHTML = '<p class="error">Open from Shopify Admin.</p>';
+        btn.disabled = false;
+        return;
       }
 
-      btn.disabled = false;
+      const code = new URLSearchParams(location.search).get('code');
+      if (!code) {
+        startOAuth(shop);
+        return;
+      }
+
+      try {
+        const token = await exchangeCode(shop, code);
+        await loadProductsWithToken(token, shop);
+      } catch (err) {
+        output.innerHTML = `<p class="error">${err.message}</p>`;
+      } finally {
+        btn.disabled = false;
+      }
     }
-
-    manualBtn.onclick = () => {
-      const code = prompt('Paste the "code" from the OAuth URL:');
-      if (code) {
-        const shop = getShop();
-        if (shop) {
-          exchangeCode(shop, code).then(token => loadProductsWithToken(token, shop)).catch(err => {
-            output.innerHTML = `<p class="error">Manual token failed: ${err.message}</p>`;
-          });
-        }
-      }
-    };
 
     btn.onclick = loadProducts;
     if (getShop()) loadProducts();
