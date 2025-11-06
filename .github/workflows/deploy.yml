@@ -16,16 +16,14 @@ jobs:
           SHOPIFY_PROXY_SECRET: ${{ secrets.SHOPIFY_PROXY_SECRET }}
           SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
         run: |
-          if [ -z "$SHOPIFY_PROXY_SECRET" ]; then
-            echo "Error: SHOPIFY_PROXY_SECRET is not set!"
-            exit 1
-          fi
-          if [ -z "$SHOPIFY_API_KEY" ]; then
-            echo "Error: SHOPIFY_API_KEY is not set!"
+          echo "Replacing secrets in index.html..."
+          if [ ! -f index.html ]; then
+            echo "ERROR: index.html not found!"
             exit 1
           fi
           sed -i "s|%%SHOPIFY_PROXY_SECRET%%|$SHOPIFY_PROXY_SECRET|g" index.html
           sed -i "s|%%SHOPIFY_API_KEY%%|$SHOPIFY_API_KEY|g" index.html
+          echo "Secrets injected."
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
