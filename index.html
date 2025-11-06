@@ -13,7 +13,6 @@
     .loading{color:#555;}
   </style>
 
-  <!-- Shopify App Bridge -->
   <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
 </head>
 <body>
@@ -23,13 +22,13 @@
   <div id="output"></div>
 
   <script>
-    // ——— CONFIG (Injected by GitHub Actions) ———
+    // ——— CONFIG ———
     const PROXY_URL      = 'https://shopify-proxy-romeoasis.meoasis2014.workers.dev';
     const API_VERSION    = '2025-10';
-    const CLIENT_ID      = '%%SHOPIFY_API_KEY%%';        // ← Replaced on deploy
-    const CLIENT_SECRET  = '%%SHOPIFY_PROXY_SECRET%%';   // ← Replaced on deploy
+    const CLIENT_ID      = '%%SHOPIFY_API_KEY%%';
+    const CLIENT_SECRET  = '%%SHOPIFY_PROXY_SECRET%%';
     const REDIRECT_URI   = 'https://romeoasis2023.github.io/staticapp/';
-    // ————————————————————————————————
+    // ——————————————
 
     const output = document.getElementById('output');
     const btn    = document.getElementById('loadBtn');
@@ -45,11 +44,7 @@
         return;
       }
 
-      const url = `${shop}/admin/oauth/authorize?` +
-        `client_id=${CLIENT_ID}` +
-        `&scope=read_products` +
-        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-        `&state=staticapp`;
+      const url = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=staticapp`;
 
       if (window.top !== window.self) {
         window.top.location.href = url;
@@ -65,10 +60,7 @@
         body: JSON.stringify({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, code })
       });
 
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Token exchange failed (${res.status}): ${txt}`);
-      }
+      if (!res.ok) throw new Error(`Token failed: ${await res.text()}`);
       return (await res.json()).access_token;
     }
 
@@ -78,26 +70,20 @@
 
       try {
         const shop = getShop();
-        if (!shop) throw new Error('Open from Shopify Admin (missing shop param).');
+        if (!shop) throw new Error('Open from Shopify Admin.');
 
         const code = new URLSearchParams(location.search).get('code');
 
-        let token;
         if (!code) {
           startOAuth(shop);
           return;
-        } else {
-          token = await exchangeCode(shop, code);
         }
 
-        const apiPath  = `/admin/api/${API_VERSION}/products.json?limit=10`;
-        const proxyUrl = `${PROXY_URL}${apiPath}?shop=${encodeURIComponent(shop)}&token=${token}`;
+        const token = await exchangeCode(shop, code);
+        const proxyUrl = `${PROXY_URL}/admin/api/${API_VERSION}/products.json?limit=10&shop=${encodeURIComponent(shop)}&token=${token}`;
 
         const res = await fetch(proxyUrl);
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(`Proxy ${res.status}: ${txt}`);
-        }
+        if (!res.ok) throw new Error(`Proxy error: ${await res.text()}`);
 
         const { products } = await res.json();
         if (!products?.length) {
@@ -120,14 +106,12 @@
 
       } catch (err) {
         output.innerHTML = `<p class="error">Error: ${err.message}</p>`;
-        console.error(err);
       } finally {
         btn.disabled = false;
       }
     }
 
     btn.onclick = loadProducts;
-
     if (getShop()) loadProducts();
   </script>
 </body>
