@@ -54,7 +54,7 @@
     }
 
     function startOAuth(shop) {
-      const redirectUri = encodeURIComponent(location.href.split('?')[0]);
+      const redirectUri = encodeURIComponent('https://romeoasis2023.github.io/staticapp/');
       const oauthUrl = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${redirectUri}&state=shopify_app`;
       location.href = oauthUrl;
     }
@@ -120,3 +120,4 @@
   </script>
 </body>
 </html>
+
