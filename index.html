@@ -11,6 +11,7 @@
     .product img{max-width:180px;margin-top:8px;}
     .error{color:red;font-weight:bold;}
     .loading{color:#555;}
+    .info{color:#0066cc;margin-top:15px;}
   </style>
   <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
 </head>
@@ -37,7 +38,44 @@
 
     function startOAuth(shop) {
       const url = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=staticapp`;
-      window.open(url, 'oauth');
+      const popup = window.open(url, 'oauth', 'width=600,height=700');
+      
+      if (!popup) {
+        output.innerHTML += '<p class="error">Popup blocked. Please allow popups for this site.</p>';
+        return;
+      }
+
+      output.innerHTML += '<p class="info">OAuth opened in popup. Approve and wait...</p>';
+
+      const poll = setInterval(async () => {
+        try {
+          if (popup.closed) {
+            clearInterval(poll);
+            output.innerHTML += '<p class="info">Popup closed. Refresh to continue.</p>';
+            return;
+          }
+          const popupUrl = popup.location.href;
+          const params = new URLSearchParams(new URL(popupUrl).search);
+          const code = params.get('code');
+          if (code) {
+            clearInterval(poll);
+            popup.close();
+            await exchangeAndLoad(code, shop);
+          }
+        } catch (e) {
+          // Cross-origin: ignore
+        }
+      }, 1000);
+    }
+
+    async function exchangeAndLoad(code, shop) {
+      output.innerHTML = '<p class="loading">Exchanging token...</p>';
+      try {
+        const token = await exchangeCode(shop, code);
+        await loadProductsWithToken(token, shop);
+      } catch (err) {
+        output.innerHTML = `<p class="error">Token exchange failed: ${err.message}</p>`;
+      }
     }
 
     async function exchangeCode(shop, code) {
@@ -47,55 +85,54 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ shop, code, client_id: CLIENT_ID, client_secret: CLIENT_SECRET })
       });
-      if (!res.ok) throw new Error(`Token failed: ${await res.text()}`);
+      if (!res.ok) throw new Error(await res.text());
       return (await res.json()).access_token;
     }
 
+    async function loadProductsWithToken(token, shop) {
+      const proxyUrl = `${PROXY_URL}/admin/api/${API_VERSION}/products.json?limit=10&shop=${encodeURIComponent(shop)}&token=${token}`;
+      const res = await fetch(proxyUrl);
+      if (!res.ok) throw new Error(`Proxy error: ${await res.text()}`);
+
+      const { products } = await res.json();
+      if (!products?.length) {
+        output.innerHTML = '<p>No products found.</p>';
+        return;
+      }
+
+      output.innerHTML = `<h2>${products.length} Products</h2>`;
+      products.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'product';
+        div.innerHTML = `
+          <h3>${p.title}</h3>
+          <p>ID: ${p.id} | Handle: ${p.handle}</p>
+          <p>Price: $${p.variants[0]?.price || 'N/A'}</p>
+          ${p.images[0]?.src ? `<img src="${p.images[0].src}" onerror="this.style.display='none'">` : ''}
+        `;
+        output.appendChild(div);
+      });
+    }
+
     async function loadProducts() {
-      output.innerHTML = '<p class="loading">Loading...</p>';
+      output.innerHTML = '';
       btn.disabled = true;
 
-      try {
-        const shop = getShop();
-        if (!shop) throw new Error('Open from Shopify Admin.');
-
-        const code = new URLSearchParams(location.search).get('code');
-        if (!code) {
-          startOAuth(shop);
-          output.innerHTML += '<p>OAuth opened in new tab. Approve and return here.</p>';
-          return;
-        }
-
-        const token = await exchangeCode(shop, code);
-        const proxyUrl = `${PROXY_URL}/admin/api/${API_VERSION}/products.json?limit=10&shop=${encodeURIComponent(shop)}&token=${token}`;
-
-        const res = await fetch(proxyUrl);
-        if (!res.ok) throw new Error(`Proxy error: ${await res.text()}`);
-
-        const { products } = await res.json();
-        if (!products?.length) {
-          output.innerHTML = '<p>No products found.</p>';
-          return;
-        }
-
-        output.innerHTML = `<h2>${products.length} Products</h2>`;
-        products.forEach(p => {
-          const div = document.createElement('div');
-          div.className = 'product';
-          div.innerHTML = `
-            <h3>${p.title}</h3>
-            <p>ID: ${p.id} | Handle: ${p.handle}</p>
-            <p>Price: $${p.variants[0]?.price || 'N/A'}</p>
-            ${p.images[0]?.src ? `<img src="${p.images[0].src}" onerror="this.style.display='none'">` : ''}
-          `;
-          output.appendChild(div);
-        });
-
-      } catch (err) {
-        output.innerHTML = `<p class="error">Error: ${err.message}</p>`;
-      } finally {
+      const shop = getShop();
+      if (!shop) {
+        output.innerHTML = '<p class="error">Open from Shopify Admin.</p>';
         btn.disabled = false;
+        return;
       }
+
+      const code = new URLSearchParams(location.search).get('code');
+      if (code) {
+        await exchangeAndLoad(code, shop);
+      } else {
+        startOAuth(shop);
+      }
+
+      btn.disabled = false;
     }
 
     btn.onclick = loadProducts;
