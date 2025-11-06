@@ -1,7 +1,7 @@
 name: Deploy Shopify Proxy
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
       - name: Inject Shopify Secrets
         env:
           SHOPIFY_PROXY_SECRET: ${{ secrets.SHOPIFY_PROXY_SECRET }}
-          SHOPIFY_API_KEY:      ${{ secrets.SHOPIFY_API_KEY }}
+          SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
         run: |
           echo "Injecting secrets into index.html..."
           if [ -z "$SHOPIFY_PROXY_SECRET" ] || [ -z "$SHOPIFY_API_KEY" ]; then
