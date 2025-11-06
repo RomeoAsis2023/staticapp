@@ -3,89 +3,102 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Shopify Products – Fixed Proxy Error</title>
+  <title>Static App – Products</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    button { padding: 10px 16px; font-size: 16px; cursor: pointer; }
-    .product { border: 1px solid #ddd; margin: 12px 0; padding: 12px; border-radius: 8px; }
-    .product img { max-width: 180px; margin-top: 8px; }
-    .error { color: red; font-weight: bold; }
-    .loading { color: #555; }
+    body {font-family: Arial, sans-serif; margin:20px;}
+    button {padding:10px 16px; font-size:16px; cursor:pointer;}
+    .product {border:1px solid #ddd; margin:12px 0; padding:12px; border-radius:8px;}
+    .product img {max-width:180px; margin-top:8px;}
+    .error {color:red; font-weight:bold;}
+    .loading {color:#555;}
   </style>
+
+  <!-- Shopify App Bridge – helps with iframe & redirects -->
+  <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
 </head>
 <body>
 
-  <h1>Products from This Store</h1>
-  <button onclick="loadProducts()">Load Products</button>
+  <h1>Products from this store</h1>
+  <button id="loadBtn" onclick="loadProducts()">Load Products</button>
   <div id="output"></div>
 
   <script>
-    // ——— CONFIG (GitHub Secrets) ———
-    const PROXY_URL = 'https://shopify-proxy-romeoasis.meoasis2014.workers.dev';
-    const API_VERSION = '2025-10';
+    // ——— CONFIG ———
+    const PROXY_URL      = 'https://shopify-proxy-romeoasis.meoasis2014.workers.dev';
+    const API_VERSION    = '2025-10';  
     const CLIENT_ID = '%%SHOPIFY_API_KEY%%';         // Your App API Key
     const CLIENT_SECRET = '%%SHOPIFY_PROXY_SECRET%%'; // Your App Secret Key
-    // ———————————————————————————————
+    const REDIRECT_URI   = 'https://romeoasis2023.github.io/staticapp/';
+    // ——————————————
 
-    function getShopFromUrl() {
+    const output = document.getElementById('output');
+    const btn    = document.getElementById('loadBtn');
+
+    function getShop() {
       const params = new URLSearchParams(location.search);
-      const shop = params.get('shop'); // e.g., mystore.myshopify.com
+      const shop   = params.get('shop');
       return shop ? `https://${shop}` : null;
     }
 
-    async function getAccessToken(shop, code) {
-      const tokenUrl = `${shop}/admin/oauth/access_token`;
-      const response = await fetch(tokenUrl, {
+    function startOAuth(shop) {
+      const url = `${shop}/admin/oauth/authorize?` +
+        `client_id=${CLIENT_ID}` +
+        `&scope=read_products` +
+        `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+        `&state=staticapp`;
+
+      // Escape iframe (Shopify blocks redirects inside iframe)
+      if (window.top !== window.self) {
+        window.top.location.href = url;
+      } else {
+        location.href = url;
+      }
+    }
+
+    async function exchangeCode(shop, code) {
+      const res = await fetch(`${shop}/admin/oauth/access_token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: CLIENT_ID,
           client_secret: CLIENT_SECRET,
-          code: code
+          code
         })
       });
 
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Token exchange failed: ${response.status} ${err}`);
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Token exchange failed (${res.status}): ${txt}`);
       }
-      const data = await response.json();
+      const data = await res.json();
       return data.access_token;
     }
 
-    function startOAuth(shop) {
-      const redirectUri = encodeURIComponent('https://romeoasis2023.github.io/staticapp/');
-      const oauthUrl = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${redirectUri}&state=shopify_app`;
-      location.href = oauthUrl;
-    }
-
     async function loadProducts() {
-      const output = document.getElementById('output');
       output.innerHTML = '<p class="loading">Loading...</p>';
+      btn.disabled = true;
 
       try {
-        const shop = getShopFromUrl();
-        if (!shop) throw new Error('No shop in URL. Open via Shopify Admin.');
+        const shop = getShop();
+        if (!shop) throw new Error('No shop in URL. Open from Shopify Admin.');
 
-        const params = new URLSearchParams(location.search);
-        const code = params.get('code');
+        const code = new URLSearchParams(location.search).get('code');
 
         let token;
         if (!code) {
           startOAuth(shop);
           return;
         } else {
-          token = await getAccessToken(shop, code);
+          token = await exchangeCode(shop, code);
         }
 
-        // Build proxy URL with shop & token as query params
-        const apiPath = `/admin/api/${API_VERSION}/products.json?limit=10`;
+        const apiPath  = `/admin/api/${API_VERSION}/products.json?limit=10`;
         const proxyUrl = `${PROXY_URL}${apiPath}?shop=${encodeURIComponent(shop)}&token=${token}`;
 
         const res = await fetch(proxyUrl);
         if (!res.ok) {
-          const err = await res.text();
-          throw new Error(`Proxy error ${res.status}: ${err}`);
+          const txt = await res.text();
+          throw new Error(`Proxy error ${res.status}: ${txt}`);
         }
 
         const { products } = await res.json();
@@ -102,22 +115,23 @@
             <h3>${p.title}</h3>
             <p><strong>ID:</strong> ${p.id} | <strong>Handle:</strong> ${p.handle}</p>
             <p><strong>Price:</strong> $${p.variants[0]?.price || 'N/A'}</p>
-            ${p.images[0]?.src ? `<img src="${p.images[0].src}" alt="${p.title}" onerror="this.style.display='none'">` : ''}
+            ${p.images[0]?.src ? `<img src="${p.images[0].src}" onerror="this.style.display='none'">` : ''}
           `;
           output.appendChild(div);
         });
 
       } catch (err) {
         output.innerHTML = `<p class="error">Error: ${err.message}</p>`;
-        console.error('Shopify App Error:', err);
+        console.error(err);
+      } finally {
+        btn.disabled = false;
       }
     }
 
-    // Auto-run if shop is in URL
-    if (getShopFromUrl()) {
-      loadProducts();
-    }
+    // Auto-load if shop is present
+    if (getShop()) loadProducts();
   </script>
 </body>
 </html>
+
 
