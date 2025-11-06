@@ -1,7 +1,7 @@
 name: Deploy Shopify Proxy
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -23,23 +23,25 @@ jobs:
       - name: Inject Shopify Secrets
         env:
           SHOPIFY_PROXY_SECRET: ${{ secrets.SHOPIFY_PROXY_SECRET }}
-          SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
+          SHOPIFY_API_KEY:      ${{ secrets.SHOPIFY_API_KEY }}
         run: |
-          echo "Injecting secrets into index.html..."
+          echo "Injecting secrets..."
           if [ -z "$SHOPIFY_PROXY_SECRET" ] || [ -z "$SHOPIFY_API_KEY" ]; then
-            echo "ERROR: One or both secrets are missing!"
+            echo "ERROR: Missing secrets!"
             exit 1
           fi
-          # Use | as delimiter to avoid issues with special chars
-          sed -i "s|%%SHOPIFY_PROXY_SECRET%%|${SHOPIFY_PROXY_SECRET}|g" index.html
-          sed -i "s|%%SHOPIFY_API_KEY%%|${SHOPIFY_API_KEY}|g" index.html
-          echo "Secrets injected."
+          # Escape / and & for sed
+          ESCAPED_SECRET=$(printf '%s\n' "$SHOPIFY_PROXY_SECRET" | sed 's/[&/\]/\\&/g')
+          ESCAPED_KEY=$(printf '%s\n' "$SHOPIFY_API_KEY" | sed 's/[&/\]/\\&/g')
+          sed -i "s|%%SHOPIFY_PROXY_SECRET%%|$ESCAPED_SECRET|g" index.html
+          sed -i "s|%%SHOPIFY_API_KEY%%|$ESCAPED_KEY|g" index.html
+          echo "Injected."
 
-      - name: Show file after injection (debug)
+      - name: Debug: Show final index.html
         run: |
-          echo "=== index.html after injection ==="
+          echo "=== FINAL index.html ==="
           cat index.html
-          echo "=== end ==="
+          echo "=== END ==="
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
