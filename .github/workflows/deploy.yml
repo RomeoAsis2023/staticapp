@@ -1,20 +1,16 @@
 name: Deploy Shopify Proxy
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Inject Shopify Proxy Secrets
         env:
           SHOPIFY_PROXY_SECRET: ${{ secrets.SHOPIFY_PROXY_SECRET }}
@@ -30,7 +26,6 @@ jobs:
           fi
           sed -i "s|%%SHOPIFY_PROXY_SECRET%%|$SHOPIFY_PROXY_SECRET|g" index.html
           sed -i "s|%%SHOPIFY_API_KEY%%|$SHOPIFY_API_KEY|g" index.html
-
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
