@@ -37,14 +37,15 @@
 
     function startOAuth(shop) {
       const url = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=staticapp`;
-      window.open(url, '_blank');
+      window.open(url, 'oauth');
     }
 
     async function exchangeCode(shop, code) {
-      const res = await fetch(`${shop}/admin/oauth/access_token`, {
+      const tokenUrl = `${PROXY_URL}/token`;
+      const res = await fetch(tokenUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, code })
+        body: JSON.stringify({ shop, code, client_id: CLIENT_ID, client_secret: CLIENT_SECRET })
       });
       if (!res.ok) throw new Error(`Token failed: ${await res.text()}`);
       return (await res.json()).access_token;
@@ -61,6 +62,7 @@
         const code = new URLSearchParams(location.search).get('code');
         if (!code) {
           startOAuth(shop);
+          output.innerHTML += '<p>OAuth opened in new tab. Approve and return here.</p>';
           return;
         }
 
