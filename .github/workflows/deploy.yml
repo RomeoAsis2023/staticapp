@@ -25,23 +25,26 @@ jobs:
           SHOPIFY_PROXY_SECRET: ${{ secrets.SHOPIFY_PROXY_SECRET }}
           SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
         run: |
-          echo "Injecting secrets..."
+          echo "Starting secret injection..."
           if [ -z "$SHOPIFY_PROXY_SECRET" ] || [ -z "$SHOPIFY_API_KEY" ]; then
-            echo "ERROR: Missing secrets!"
+            echo "ERROR: One or both secrets are missing!"
             exit 1
           fi
-          # Escape special characters for sed
-          ESCAPED_SECRET=$(printf '%s\n' "$SHOPIFY_PROXY_SECRET" | sed 's/[&/\]/\\&/g')
-          ESCAPED_KEY=$(printf '%s\n' "$SHOPIFY_API_KEY" | sed 's/[&/\]/\\&/g')
+
+          # Escape for sed: replace /, &, \ with \/
+          ESCAPED_SECRET=$(printf '%s' "$SHOPIFY_PROXY_SECRET" | sed 's/[\/&]/\\&/g')
+          ESCAPED_KEY=$(printf '%s' "$SHOPIFY_API_KEY" | sed 's/[\/&]/\\&/g')
+
           sed -i "s|%%SHOPIFY_PROXY_SECRET%%|$ESCAPED_SECRET|g" index.html
           sed -i "s|%%SHOPIFY_API_KEY%%|$ESCAPED_KEY|g" index.html
+
           echo "Secrets injected."
 
       - name: Debug - Show final index.html
         run: |
-          echo "=== FINAL index.html ==="
+          echo "=== FINAL index.html CONTENT ==="
           cat index.html
-          echo "=== END ==="
+          echo "=== END OF FILE ==="
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
