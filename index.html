@@ -6,7 +6,7 @@
   <title>Static App – Products</title>
   <style>
     body {font-family:Arial,sans-serif;margin:20px;}
-    button{padding:10px 16px;font-size:16px;cursor:pointer;}
+    button{padding:10px 16px;font-size:16px;cursor:pointer;margin:5px;}
     .product{border:1px solid #ddd;margin:12px 0;padding:12px;border-radius:8px;}
     .product img{max-width:180px;margin-top:8px;}
     .error{color:red;font-weight:bold;}
@@ -19,6 +19,7 @@
 
   <h1>Products from this store</h1>
   <button id="loadBtn">Load Products</button>
+  <button id="manualBtn" style="display:none;">Enter Code Manually</button>
   <div id="output"></div>
 
   <script>
@@ -30,6 +31,7 @@
 
     const output = document.getElementById('output');
     const btn    = document.getElementById('loadBtn');
+    const manualBtn = document.getElementById('manualBtn');
 
     function getShop() {
       const shop = new URLSearchParams(location.search).get('shop');
@@ -38,43 +40,21 @@
 
     function startOAuth(shop) {
       const url = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=staticapp`;
-      const popup = window.open(url, 'oauth', 'width=600,height=700');
       
-      if (!popup) {
-        output.innerHTML += '<p class="error">Popup blocked. Please allow popups for this site.</p>';
-        return;
-      }
-
-      output.innerHTML += '<p class="info">OAuth opened in popup. Approve and wait...</p>';
-
-      const poll = setInterval(async () => {
-        try {
-          if (popup.closed) {
-            clearInterval(poll);
-            output.innerHTML += '<p class="info">Popup closed. Refresh to continue.</p>';
-            return;
-          }
-          const popupUrl = popup.location.href;
-          const params = new URLSearchParams(new URL(popupUrl).search);
-          const code = params.get('code');
-          if (code) {
-            clearInterval(poll);
-            popup.close();
-            await exchangeAndLoad(code, shop);
-          }
-        } catch (e) {
-          // Cross-origin: ignore
-        }
-      }, 1000);
-    }
-
-    async function exchangeAndLoad(code, shop) {
-      output.innerHTML = '<p class="loading">Exchanging token...</p>';
+      // Try top-level redirect first
       try {
-        const token = await exchangeCode(shop, code);
-        await loadProductsWithToken(token, shop);
-      } catch (err) {
-        output.innerHTML = `<p class="error">Token exchange failed: ${err.message}</p>`;
+        window.top.location.href = url;
+        return;
+      } catch (e) {}
+
+      // Fallback: open in new tab
+      const win = window.open(url, '_blank');
+      if (win) {
+        output.innerHTML = '<p class="info">OAuth opened in new tab. Approve, then return here and click "Load Products" again.</p>';
+        manualBtn.style.display = 'inline-block';
+      } else {
+        output.innerHTML = '<p class="error">Popup blocked. Please allow popups or use manual mode.</p>';
+        manualBtn.style.display = 'inline-block';
       }
     }
 
@@ -85,7 +65,10 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ shop, code, client_id: CLIENT_ID, client_secret: CLIENT_SECRET })
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Token failed: ${txt}`);
+      }
       return (await res.json()).access_token;
     }
 
@@ -117,23 +100,40 @@
     async function loadProducts() {
       output.innerHTML = '';
       btn.disabled = true;
+      manualBtn.style.display = 'none';
 
       const shop = getShop();
-      if (!shop) {
-        output.innerHTML = '<p class="error">Open from Shopify Admin.</p>';
-        btn.disabled = false;
-        return;
-      }
-
-      const code = new URLSearchParams(location.search).get('code');
-      if (code) {
-        await exchangeAndLoad(code, shop);
+      if (shop) {
+        const code = new URLSearchParams(location.search).get('code');
+        if (code) {
+          output.innerHTML = '<p class="loading">Exchanging token...</p>';
+          try {
+            const token = await exchangeCode(shop, code);
+            await loadProductsWithToken(token, shop);
+          } catch (err) {
+            output.innerHTML = `<p class="error">${err.message}</p>`;
+          }
+        } else {
+          startOAuth(shop);
+        }
       } else {
-        startOAuth(shop);
+        output.innerHTML = '<p class="error">Open from Shopify Admin.</p>';
       }
 
       btn.disabled = false;
     }
+
+    manualBtn.onclick = () => {
+      const code = prompt('Paste the "code" from the OAuth URL:');
+      if (code) {
+        const shop = getShop();
+        if (shop) {
+          exchangeCode(shop, code).then(token => loadProductsWithToken(token, shop)).catch(err => {
+            output.innerHTML = `<p class="error">Manual token failed: ${err.message}</p>`;
+          });
+        }
+      }
+    };
 
     btn.onclick = loadProducts;
     if (getShop()) loadProducts();
