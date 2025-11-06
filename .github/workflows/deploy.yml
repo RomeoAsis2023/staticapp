@@ -30,9 +30,16 @@ jobs:
             echo "ERROR: One or both secrets are missing!"
             exit 1
           fi
-          sed -i "s|%%SHOPIFY_PROXY_SECRET%%|$SHOPIFY_PROXY_SECRET|g" index.html
-          sed -i "s|%%SHOPIFY_API_KEY%%|$SHOPIFY_API_KEY|g" index.html
+          # Use | as delimiter to avoid issues with special chars
+          sed -i "s|%%SHOPIFY_PROXY_SECRET%%|${SHOPIFY_PROXY_SECRET}|g" index.html
+          sed -i "s|%%SHOPIFY_API_KEY%%|${SHOPIFY_API_KEY}|g" index.html
           echo "Secrets injected."
+
+      - name: Show file after injection (debug)
+        run: |
+          echo "=== index.html after injection ==="
+          cat index.html
+          echo "=== end ==="
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
