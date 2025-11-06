@@ -5,38 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Static App – Products</title>
   <style>
-    body {font-family: Arial, sans-serif; margin:20px;}
-    button {padding:10px 16px; font-size:16px; cursor:pointer;}
-    .product {border:1px solid #ddd; margin:12px 0; padding:12px; border-radius:8px;}
-    .product img {max-width:180px; margin-top:8px;}
-    .error {color:red; font-weight:bold;}
-    .loading {color:#555;}
+    body {font-family:Arial,sans-serif;margin:20px;}
+    button{padding:10px 16px;font-size:16px;cursor:pointer;}
+    .product{border:1px solid #ddd;margin:12px 0;padding:12px;border-radius:8px;}
+    .product img{max-width:180px;margin-top:8px;}
+    .error{color:red;font-weight:bold;}
+    .loading{color:#555;}
   </style>
 
-  <!-- Shopify App Bridge – helps with iframe & redirects -->
+  <!-- Shopify App Bridge – required for embedded apps -->
   <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
 </head>
 <body>
 
   <h1>Products from this store</h1>
-  <button id="loadBtn" onclick="loadProducts()">Load Products</button>
+  <button id="loadBtn">Load Products</button>
   <div id="output"></div>
 
   <script>
-    // ——— CONFIG ———
+    // ——— CONFIG (Injected by GitHub Actions) ———
     const PROXY_URL      = 'https://shopify-proxy-romeoasis.meoasis2014.workers.dev';
-    const API_VERSION    = '2025-10';  
-    const CLIENT_ID = '%%SHOPIFY_API_KEY%%';         // Your App API Key
-    const CLIENT_SECRET = '%%SHOPIFY_PROXY_SECRET%%'; // Your App Secret Key
+    const API_VERSION    = '2025-10';
+    const CLIENT_ID      = '%%SHOPIFY_API_KEY%%';        // ← Will be replaced
+    const CLIENT_SECRET  = '%%SHOPIFY_PROXY_SECRET%%';   // ← Will be replaced
     const REDIRECT_URI   = 'https://romeoasis2023.github.io/staticapp/';
-    // ——————————————
+    // ————————————————————————————————
 
     const output = document.getElementById('output');
     const btn    = document.getElementById('loadBtn');
 
     function getShop() {
-      const params = new URLSearchParams(location.search);
-      const shop   = params.get('shop');
+      const shop = new URLSearchParams(location.search).get('shop');
       return shop ? `https://${shop}` : null;
     }
 
@@ -47,7 +46,7 @@
         `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
         `&state=staticapp`;
 
-      // Escape iframe (Shopify blocks redirects inside iframe)
+      // Break out of iframe (critical for embedded apps)
       if (window.top !== window.self) {
         window.top.location.href = url;
       } else {
@@ -70,17 +69,16 @@
         const txt = await res.text();
         throw new Error(`Token exchange failed (${res.status}): ${txt}`);
       }
-      const data = await res.json();
-      return data.access_token;
+      return (await res.json()).access_token;
     }
 
     async function loadProducts() {
-      output.innerHTML = '<p class="loading">Loading...</p>';
+      output.innerHTML = '<p class: class="loading">Loading...</p>';
       btn.disabled = true;
 
       try {
         const shop = getShop();
-        if (!shop) throw new Error('No shop in URL. Open from Shopify Admin.');
+        if (!shop) throw new Error('Open from Shopify Admin (missing shop param).');
 
         const code = new URLSearchParams(location.search).get('code');
 
@@ -98,11 +96,11 @@
         const res = await fetch(proxyUrl);
         if (!res.ok) {
           const txt = await res.text();
-          throw new Error(`Proxy error ${res.status}: ${txt}`);
+          throw new Error(`Proxy ${res.status}: ${txt}`);
         }
 
         const { products } = await res.json();
-        if (!products || products.length === 0) {
+        if (!products?.length) {
           output.innerHTML = '<p>No products found.</p>';
           return;
         }
@@ -113,8 +111,8 @@
           div.className = 'product';
           div.innerHTML = `
             <h3>${p.title}</h3>
-            <p><strong>ID:</strong> ${p.id} | <strong>Handle:</strong> ${p.handle}</p>
-            <p><strong>Price:</strong> $${p.variants[0]?.price || 'N/A'}</p>
+            <p>ID: ${p.id} | Handle: ${p.handle}</p>
+            <p>Price: $${p.variants[0]?.price || 'N/A'}</p>
             ${p.images[0]?.src ? `<img src="${p.images[0].src}" onerror="this.style.display='none'">` : ''}
           `;
           output.appendChild(div);
@@ -128,10 +126,10 @@
       }
     }
 
-    // Auto-load if shop is present
+    btn.onclick = loadProducts;
+
+    // Auto-start if shop is in URL
     if (getShop()) loadProducts();
   </script>
 </body>
 </html>
-
-
