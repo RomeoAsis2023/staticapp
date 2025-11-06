@@ -3,73 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Custom Text Field App</title>
+  <title>Custom Text Field App – Proxy Demo</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
+  <style>
+    .product { border: 1px solid #ddd; margin: 10px 0; padding: 10px; border-radius: 6px; }
+    .product img { max-width: 200px; display: block; margin-top: 8px; }
+  </style>
 </head>
 <body>
- <button onclick="fetchProducts()">Fetch Products</button>
-    
-    <div id="products"></div>
 
-    <script>
-        async function fetchProducts() {
-            const shop = 'https://d2cdesigntestromeo.myshopify.com';
-            const clientId = '%%SHOPIFY_API_KEY%%';
-            const clientSecret = '%%SHOPIFY_PROXY_SECRET%%';
-            const apiVersion = '2025-10';
+  <button onclick="fetchProducts()">Fetch Products via Proxy</button>
+  <div id="products"></div>
 
-        
-            // Basic Auth credentials
-            const credentials = btoa(`${clientId}:${clientSecret}`);
-            
-            // REST API endpoint for products (simpler for plain JS; GraphQL would require POST body)
-            const url = `https://${shop}/admin/api/${apiVersion}/products.json?limit=5`; // Limit to 5 for demo
+  <script>
+    // ---------- CONFIG ----------
+    const PROXY_BASE = 'shopify-proxy-romeoasis.meoasis2014.workers.dev';
+    const JSON_PATH   = '/products.json';   // <-- change if your file lives elsewhere
+    // ----------------------------
 
-            try {
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Basic ${credentials}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+    async function fetchProducts() {
+      const url = `${PROXY_BASE}${JSON_PATH}`;
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                displayProducts(data.products);
-            } catch (error) {
-                console.error('Error fetching products:', error);
-                document.getElementById('products').innerHTML = `<p>Error: ${error.message}</p>`;
-            }
+        if (!response.ok) {
+          throw new Error(`Proxy returned ${response.status}`);
         }
 
-        function displayProducts(products) {
-            const container = document.getElementById('products');
-            if (products.length === 0) {
-                container.innerHTML = '<p>No products found.</p>';
-                return;
-            }
+        const data = await response.json();          // expects { products: [...] }
+        displayProducts(data.products || data);      // flexible: accept array or object
+      } catch (error) {
+        console.error('Proxy fetch error:', error);
+        document.getElementById('products').innerHTML = `<p style="color:red;">Error: ${error.message}</p>`;
+      }
+    }
 
-            container.innerHTML = `<h2>Products (${products.length}):</h2>`;
-            products.forEach(product => {
-                const div = document.createElement('div');
-                div.className = 'product';
-                div.innerHTML = `
-                    <h3>${product.title}</h3>
-                    <p>ID: ${product.id}</p>
-                    <p>Handle: ${product.handle}</p>
-                    <p>Price: $${product.variants[0]?.price || 'N/A'}</p>
-                    <img src="${product.images[0]?.src || ''}" alt="${product.title}" style="max-width: 200px;" onerror="this.style.display='none';">
-                `;
-                container.appendChild(div);
-            });
-        }
-    </script>
+    function displayProducts(products) {
+      const container = document.getElementById('products');
+      container.innerHTML = '';
+
+      if (!Array.isArray(products) || products.length === 0) {
+        container.innerHTML = '<p>No products found.</p>';
+        return;
+      }
+
+      container.innerHTML = `<h2>Products (${products.length})</h2>`;
+      products.forEach(product => {
+        const div = document.createElement('div');
+        div.className = 'product';
+        div.innerHTML = `
+          <h3>${product.title || 'Untitled'}</h3>
+          <p>ID: ${product.id}</p>
+          <p>Handle: ${product.handle}</p>
+          <p>Price: $${product.variants?.[0]?.price || 'N/A'}</p>
+          <img src="${product.images?.[0]?.src || ''}"
+               alt="${product.title}"
+               onerror="this.style.display='none';">
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // OPTIONAL: auto-load on page ready (remove if you only want button click)
+    // window.addEventListener('load', fetchProducts);
+  </script>
 </body>
 </html>
+
 
 
