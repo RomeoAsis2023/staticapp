@@ -13,7 +13,7 @@
     .loading{color:#555;}
   </style>
 
-  <!-- Shopify App Bridge – required for embedded apps -->
+  <!-- Shopify App Bridge -->
   <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
 </head>
 <body>
@@ -26,8 +26,8 @@
     // ——— CONFIG (Injected by GitHub Actions) ———
     const PROXY_URL      = 'https://shopify-proxy-romeoasis.meoasis2014.workers.dev';
     const API_VERSION    = '2025-10';
-    const CLIENT_ID      = '%%SHOPIFY_API_KEY%%';        // ← Will be replaced
-    const CLIENT_SECRET  = '%%SHOPIFY_PROXY_SECRET%%';   // ← Will be replaced
+    const CLIENT_ID      = '%%SHOPIFY_API_KEY%%';        // ← Replaced on deploy
+    const CLIENT_SECRET  = '%%SHOPIFY_PROXY_SECRET%%';   // ← Replaced on deploy
     const REDIRECT_URI   = 'https://romeoasis2023.github.io/staticapp/';
     // ————————————————————————————————
 
@@ -40,13 +40,17 @@
     }
 
     function startOAuth(shop) {
+      if (!CLIENT_ID || CLIENT_ID.includes('%%')) {
+        output.innerHTML = '<p class="error">Error: API key not loaded. Check GitHub Secrets & redeploy.</p>';
+        return;
+      }
+
       const url = `${shop}/admin/oauth/authorize?` +
         `client_id=${CLIENT_ID}` +
         `&scope=read_products` +
         `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
         `&state=staticapp`;
 
-      // Break out of iframe (critical for embedded apps)
       if (window.top !== window.self) {
         window.top.location.href = url;
       } else {
@@ -58,11 +62,7 @@
       const res = await fetch(`${shop}/admin/oauth/access_token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: CLIENT_ID,
-          client_secret: CLIENT_SECRET,
-          code
-        })
+        body: JSON.stringify({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, code })
       });
 
       if (!res.ok) {
@@ -73,7 +73,7 @@
     }
 
     async function loadProducts() {
-      output.innerHTML = '<p class: class="loading">Loading...</p>';
+      output.innerHTML = '<p class="loading">Loading...</p>';
       btn.disabled = true;
 
       try {
@@ -128,7 +128,6 @@
 
     btn.onclick = loadProducts;
 
-    // Auto-start if shop is in URL
     if (getShop()) loadProducts();
   </script>
 </body>
