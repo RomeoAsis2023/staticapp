@@ -37,14 +37,7 @@
 
     function startOAuth(shop) {
       const url = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=staticapp`;
-
-      // Force top-level redirect to escape iframe
-      try {
-        window.top.location.href = url;
-      } catch (e) {
-        // Fallback: open in new tab
-        window.open(url, '_blank');
-      }
+      window.open(url, '_blank');
     }
 
     async function exchangeCode(shop, code) {
