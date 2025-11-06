@@ -1,141 +1,110 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Static App – Products</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                margin: 20px;
-            }
-            button {
-                padding: 10px 16px;
-                font-size: 16px;
-                cursor: pointer;
-            }
-            .product {
-                border: 1px solid #ddd;
-                margin: 12px 0;
-                padding: 12px;
-                border-radius: 8px;
-            }
-            .product img {
-                max-width: 180px;
-                margin-top: 8px;
-            }
-            .error {
-                color: red;
-                font-weight: bold;
-            }
-            .loading {
-                color: #555;
-            }
-        </style>
-        <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
-    </head>
-    <body>
-        <h1>Products from this store</h1>
-        <button id="loadBtn">Load Products</button>
-        <div id="output"></div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Static App – Products</title>
+  <style>
+    body {font-family:Arial,sans-serif;margin:20px;}
+    button{padding:10px 16px;font-size:16px;cursor:pointer;}
+    .product{border:1px solid #ddd;margin:12px 0;padding:12px;border-radius:8px;}
+    .product img{max-width:180px;margin-top:8px;}
+    .error{color:red;font-weight:bold;}
+    .loading{color:#555;}
+  </style>
+  <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
+</head>
+<body>
 
-        <script>
-            const PROXY_URL =
-                "https://shopify-proxy-romeoasis.meoasis2014.workers.dev";
-            const API_VERSION = "2025-10";
-            const CLIENT_ID      = 'ef270783ca1996cfb7dad3912f8355a6';
-            const CLIENT_SECRET  = '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';
-            const REDIRECT_URI = "https://romeoasis2023.github.io/staticapp/";
+  <h1>Products from this store</h1>
+  <button id="loadBtn">Load Products</button>
+  <div id="output"></div>
 
-            const output = document.getElementById("output");
-            const btn = document.getElementById("loadBtn");
+  <script>
+    const PROXY_URL      = 'https://shopify-proxy-romeoasis.meoasis2014.workers.dev';
+    const API_VERSION    = '2025-10';
+    const CLIENT_ID      = 'ef270783ca1996cfb7dad3912f8355a6';
+    const CLIENT_SECRET  = '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';
+    const REDIRECT_URI   = 'https://romeoasis2023.github.io/staticapp/';
 
-            function getShop() {
-                const shop = new URLSearchParams(location.search).get("shop");
-                return shop ? `https://${shop}` : null;
-            }
+    const output = document.getElementById('output');
+    const btn    = document.getElementById('loadBtn');
 
-            function startOAuth(shop) {
-                if (!CLIENT_ID || CLIENT_ID.includes("%%")) {
-                    output.innerHTML =
-                        '<p class="error">Error: API key not loaded. Check GitHub Secrets & redeploy.</p>';
-                    return;
-                }
+    function getShop() {
+      const shop = new URLSearchParams(location.search).get('shop');
+      return shop ? `https://${shop}` : null;
+    }
 
-                const url = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=staticapp`;
+    function startOAuth(shop) {
+      const url = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=staticapp`;
 
-                if (window.top !== window.self) {
-                    window.top.location.href = url;
-                } else {
-                    location.href = url;
-                }
-            }
+      // Force top-level redirect to escape iframe
+      try {
+        window.top.location.href = url;
+      } catch (e) {
+        // Fallback: open in new tab
+        window.open(url, '_blank');
+      }
+    }
 
-            async function exchangeCode(shop, code) {
-                const res = await fetch(`${shop}/admin/oauth/access_token`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        client_id: CLIENT_ID,
-                        client_secret: CLIENT_SECRET,
-                        code,
-                    }),
-                });
-                if (!res.ok)
-                    throw new Error(`Token failed: ${await res.text()}`);
-                return (await res.json()).access_token;
-            }
+    async function exchangeCode(shop, code) {
+      const res = await fetch(`${shop}/admin/oauth/access_token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, code })
+      });
+      if (!res.ok) throw new Error(`Token failed: ${await res.text()}`);
+      return (await res.json()).access_token;
+    }
 
-            async function loadProducts() {
-                output.innerHTML = '<p class="loading">Loading...</p>';
-                btn.disabled = true;
+    async function loadProducts() {
+      output.innerHTML = '<p class="loading">Loading...</p>';
+      btn.disabled = true;
 
-                try {
-                    const shop = getShop();
-                    if (!shop) throw new Error("Open from Shopify Admin.");
+      try {
+        const shop = getShop();
+        if (!shop) throw new Error('Open from Shopify Admin.');
 
-                    const code = new URLSearchParams(location.search).get(
-                        "code",
-                    );
-                    if (!code) {
-                        startOAuth(shop);
-                        return;
-                    }
+        const code = new URLSearchParams(location.search).get('code');
+        if (!code) {
+          startOAuth(shop);
+          return;
+        }
 
-                    const token = await exchangeCode(shop, code);
-                    const proxyUrl = `${PROXY_URL}/admin/api/${API_VERSION}/products.json?limit=10&shop=${encodeURIComponent(shop)}&token=${token}`;
+        const token = await exchangeCode(shop, code);
+        const proxyUrl = `${PROXY_URL}/admin/api/${API_VERSION}/products.json?limit=10&shop=${encodeURIComponent(shop)}&token=${token}`;
 
-                    const res = await fetch(proxyUrl);
-                    if (!res.ok)
-                        throw new Error(`Proxy error: ${await res.text()}`);
+        const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error(`Proxy error: ${await res.text()}`);
 
-                    const { products } = await res.json();
-                    if (!products?.length) {
-                        output.innerHTML = "<p>No products found.</p>";
-                        return;
-                    }
+        const { products } = await res.json();
+        if (!products?.length) {
+          output.innerHTML = '<p>No products found.</p>';
+          return;
+        }
 
-                    output.innerHTML = `<h2>${products.length} Products</h2>`;
-                    products.forEach((p) => {
-                        const div = document.createElement("div");
-                        div.className = "product";
-                        div.innerHTML = `
+        output.innerHTML = `<h2>${products.length} Products</h2>`;
+        products.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'product';
+          div.innerHTML = `
             <h3>${p.title}</h3>
             <p>ID: ${p.id} | Handle: ${p.handle}</p>
-            <p>Price: $${p.variants[0]?.price || "N/A"}</p>
-            ${p.images[0]?.src ? `<img src="${p.images[0].src}" onerror="this.style.display='none'">` : ""}
+            <p>Price: $${p.variants[0]?.price || 'N/A'}</p>
+            ${p.images[0]?.src ? `<img src="${p.images[0].src}" onerror="this.style.display='none'">` : ''}
           `;
-                        output.appendChild(div);
-                    });
-                } catch (err) {
-                    output.innerHTML = `<p class="error">Error: ${err.message}</p>`;
-                } finally {
-                    btn.disabled = false;
-                }
-            }
+          output.appendChild(div);
+        });
 
-            btn.onclick = loadProducts;
-            if (getShop()) loadProducts();
-        </script>
-    </body>
+      } catch (err) {
+        output.innerHTML = `<p class="error">Error: ${err.message}</p>`;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    btn.onclick = loadProducts;
+    if (getShop()) loadProducts();
+  </script>
+</body>
 </html>
