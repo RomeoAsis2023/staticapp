@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dynamic Shopify Products – GitHub Pages + Cloudflare Proxy</title>
+  <title>Shopify Products – Fixed Proxy Error</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     button { padding: 10px 16px; font-size: 16px; cursor: pointer; }
     .product { border: 1px solid #ddd; margin: 12px 0; padding: 12px; border-radius: 8px; }
     .product img { max-width: 180px; margin-top: 8px; }
-    .error { color: red; }
+    .error { color: red; font-weight: bold; }
     .loading { color: #555; }
   </style>
 </head>
@@ -20,21 +20,19 @@
   <div id="output"></div>
 
   <script>
-    // ——— CONFIG (Use GitHub Secrets) ———
+    // ——— CONFIG (GitHub Secrets) ———
     const PROXY_URL = 'https://shopify-proxy-romeoasis.meoasis2014.workers.dev';
     const API_VERSION = '2025-10';
-    const CLIENT_ID = '%%SHOPIFY_API_KEY%%';         // Your App's API Key
-    const CLIENT_SECRET = '%%SHOPIFY_PROXY_SECRET%%'; // Your App's Secret Key
-    // ——————————————————————————————————
+    const CLIENT_ID = '%%SHOPIFY_API_KEY%%';         // Your App API Key
+    const CLIENT_SECRET = '%%SHOPIFY_PROXY_SECRET%%'; // Your App Secret Key
+    // ———————————————————————————————
 
-    // Get shop from URL (Shopify adds ?shop=... in embedded apps)
     function getShopFromUrl() {
       const params = new URLSearchParams(location.search);
-      const shop = params.get('shop');
+      const shop = params.get('shop'); // e.g., mystore.myshopify.com
       return shop ? `https://${shop}` : null;
     }
 
-    // Exchange code for access token using your Client ID & Secret
     async function getAccessToken(shop, code) {
       const tokenUrl = `${shop}/admin/oauth/access_token`;
       const response = await fetch(tokenUrl, {
@@ -47,15 +45,17 @@
         })
       });
 
-      if (!response.ok) throw new Error('Token exchange failed');
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Token exchange failed: ${response.status} ${err}`);
+      }
       const data = await response.json();
       return data.access_token;
     }
 
-    // Initiate OAuth if no code is present
     function startOAuth(shop) {
       const redirectUri = encodeURIComponent(location.href.split('?')[0]);
-      const oauthUrl = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${redirectUri}`;
+      const oauthUrl = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${redirectUri}&state=shopify_app`;
       location.href = oauthUrl;
     }
 
@@ -65,7 +65,7 @@
 
       try {
         const shop = getShopFromUrl();
-        if (!shop) throw new Error('No shop found in URL');
+        if (!shop) throw new Error('No shop in URL. Open via Shopify Admin.');
 
         const params = new URLSearchParams(location.search);
         const code = params.get('code');
@@ -78,12 +78,15 @@
           token = await getAccessToken(shop, code);
         }
 
-        // Call proxy with shop + token
+        // Build proxy URL with shop & token as query params
         const apiPath = `/admin/api/${API_VERSION}/products.json?limit=10`;
-        const proxyUrl = `${PROXY_URL}${apiPath}&shop=${encodeURIComponent(shop)}&token=${token}`;
+        const proxyUrl = `${PROXY_URL}${apiPath}?shop=${encodeURIComponent(shop)}&token=${token}`;
 
         const res = await fetch(proxyUrl);
-        if (!res.ok) throw new Error(`Proxy error: ${res.status}`);
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(`Proxy error ${res.status}: ${err}`);
+        }
 
         const { products } = await res.json();
         if (!products || products.length === 0) {
@@ -106,11 +109,11 @@
 
       } catch (err) {
         output.innerHTML = `<p class="error">Error: ${err.message}</p>`;
-        console.error(err);
+        console.error('Shopify App Error:', err);
       }
     }
 
-    // Auto-run when shop is in URL
+    // Auto-run if shop is in URL
     if (getShopFromUrl()) {
       loadProducts();
     }
