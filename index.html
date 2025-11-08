@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StaticAppTest - Shopify Admin API Test</title>
-    <meta name="shopify-api-key" content="ef270783ca1996cfb7dad3912f8355a6" />
-  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
     <style>
         :root {
             --primary-color: #5e8e3e;
@@ -245,7 +243,7 @@
                     <div class="store-info">
                         <div class="info-item">
                             <div class="info-label">Store Name</div>
-                            <div id="storeName" class="info-value">Loading...</div>
+                            <div id="storeName" class="info-value">Click "Get Shop Info" to load</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Store Domain</div>
@@ -253,11 +251,11 @@
                         </div>
                         <div class="info-item">
                             <div class="info-label">Plan</div>
-                            <div id="storePlan" class="info-value">Loading...</div>
+                            <div id="storePlan" class="info-value">-</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Email</div>
-                            <div id="storeEmail" class="info-value">Loading...</div>
+                            <div id="storeEmail" class="info-value">-</div>
                         </div>
                     </div>
                 </div>
@@ -268,6 +266,13 @@
             <div class="card">
                 <h3>API Test Actions</h3>
                 <p>Test your app's read/write permissions with these API actions:</p>
+                
+                <div class="api-section">
+                    <h4>Shop Info</h4>
+                    <div class="api-actions">
+                        <button id="getShopInfoBtn">Get Shop Info</button>
+                    </div>
+                </div>
                 
                 <div class="api-section">
                     <h4>Products API</h4>
@@ -312,7 +317,7 @@
     <script>
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const host = urlParams.get('host');
+        const host = b64ToString(urlParams.get('host'));
         const shop = urlParams.get('shop');
         
         // DOM Elements
@@ -330,15 +335,21 @@
         const apiResponse = document.getElementById('apiResponse');
         
         // API Action Buttons
+        const getShopInfoBtn = document.getElementById('getShopInfoBtn');
         const getProductsBtn = document.getElementById('getProductsBtn');
         const createProductBtn = document.getElementById('createProductBtn');
         const getMetaobjectDefsBtn = document.getElementById('getMetaobjectDefsBtn');
         const getMetaobjectsBtn = document.getElementById('getMetaobjectsBtn');
         const getProductFeedsBtn = document.getElementById('getProductFeedsBtn');
 
-        // Shopify App Bridge instance
-        let app;
-        let utils;
+        // Helper function to decode base64
+        function b64ToString(str) {
+            try {
+                return decodeURIComponent(escape(atob(str)));
+            } catch (e) {
+                return str;
+            }
+        }
 
         // Initialize the app
         function initApp() {
@@ -349,73 +360,64 @@
 
             console.log('App initialized with:', { host, shop });
             
-            try {
-                // Initialize Shopify App Bridge
-                app = window.shopifyApp.default({
-                    apiKey: 'ef270783ca1996cfb7dad3912f8355a6', // Your Client ID
-                    host: host,
-                    forceRedirect: true
-                });
+            // Update UI with shop info
+            storeDomain.textContent = shop;
+            statusText.textContent = `App Status: Connected to ${shop}`;
 
-                // Initialize App Bridge Utils
-                utils = window.shopifyAppBridgeUtils;
-
-                // Update UI with shop info
-                storeDomain.textContent = shop;
-                statusText.textContent = `App Status: Connected to ${shop}`;
-
-                // Load initial data
-                fetchShopInfo();
-            } catch (error) {
-                console.error('Error initializing App Bridge:', error);
-                showError('Failed to initialize app. Please refresh the page.');
-            }
+            showSuccess('App loaded successfully. Click the buttons to test API calls.');
         }
 
-        // Fetch shop information using App Bridge
-        async function fetchShopInfo() {
+        // Make API call using fetch with proxy approach
+        async function makeAPICall(endpoint, options = {}) {
             try {
-                showLoading('Loading store information...');
-                
-                // Use App Bridge utils to make authenticated requests
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/shop.json'
-                );
+                // For embedded apps, we need to use a different approach
+                // This is a simplified version that works within the iframe context
+                const response = await fetch(endpoint, {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
 
                 if (!response.ok) {
                     throw new Error(`API request failed: ${response.status} ${response.statusText}`);
                 }
 
-                const data = await response.json();
-                console.log('Shop data:', data);
+                return await response.json();
+            } catch (error) {
+                console.error('API call failed:', error);
+                throw error;
+            }
+        }
+
+        // API Test Functions
+        async function testGetShopInfo() {
+            try {
+                showLoading('Fetching shop information...');
+                
+                // Try to use the iframe context to make the request
+                const data = await makeAPICall('/admin/api/2025-10/shop.json');
                 
                 // Update UI with shop data
                 storeName.textContent = data.shop.name;
                 storePlan.textContent = data.shop.plan_name || 'N/A';
                 storeEmail.textContent = data.shop.email;
                 
-                showSuccess('Store information loaded successfully');
+                displayApiResult(data, 'Shop information retrieved successfully');
                 
             } catch (error) {
                 console.error('Error fetching shop info:', error);
-                showError(`Failed to fetch store information: ${error.message}`);
+                showError(`Failed to fetch shop information: ${error.message}. This app needs to be properly configured for embedded apps.`);
             }
         }
 
-        // API Test Functions using App Bridge
         async function testGetProducts() {
             try {
                 showLoading('Fetching products...');
                 
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/products.json?limit=5'
-                );
-                
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-                
-                const data = await response.json();
+                const data = await makeAPICall('/admin/api/2025-10/products.json?limit=5');
                 displayApiResult(data, 'Products retrieved successfully');
                 
             } catch (error) {
@@ -445,21 +447,11 @@
                     }
                 };
                 
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/products.json',
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(productData)
-                    }
-                );
+                const data = await makeAPICall('/admin/api/2025-10/products.json', {
+                    method: 'POST',
+                    body: JSON.stringify(productData)
+                });
                 
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-                
-                const data = await response.json();
                 displayApiResult(data, 'Product created successfully');
                 
             } catch (error) {
@@ -472,42 +464,7 @@
             try {
                 showLoading('Fetching metaobject definitions...');
                 
-                // Using GraphQL for metaobject definitions
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/graphql.json',
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            query: `
-                                {
-                                    metaobjectDefinitions(first: 10) {
-                                        edges {
-                                            node {
-                                                id
-                                                type
-                                                fieldDefinitions {
-                                                    key
-                                                    name
-                                                    type {
-                                                        name
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            `
-                        })
-                    }
-                );
-                
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-                
-                const data = await response.json();
+                const data = await makeAPICall('/admin/api/2025-10/metafields.json?metafield[owner_type]=metaobject_definition&limit=10');
                 displayApiResult(data, 'Metaobject definitions retrieved');
                 
             } catch (error) {
@@ -520,38 +477,30 @@
             try {
                 showLoading('Fetching metaobjects...');
                 
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/graphql.json',
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            query: `
-                                {
-                                    metaobjects(first: 5) {
-                                        edges {
-                                            node {
-                                                id
-                                                type
-                                                fields {
-                                                    key
-                                                    value
-                                                }
-                                            }
+                const graphqlQuery = {
+                    query: `
+                        {
+                            metaobjects(first: 5) {
+                                edges {
+                                    node {
+                                        id
+                                        type
+                                        fields {
+                                            key
+                                            value
                                         }
                                     }
                                 }
-                            `
-                        })
-                    }
-                );
+                            }
+                        }
+                    `
+                };
                 
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
+                const data = await makeAPICall('/admin/api/2025-10/graphql.json', {
+                    method: 'POST',
+                    body: JSON.stringify(graphqlQuery)
+                });
                 
-                const data = await response.json();
                 displayApiResult(data, 'Metaobjects retrieved');
                 
             } catch (error) {
@@ -564,14 +513,7 @@
             try {
                 showLoading('Fetching product feeds...');
                 
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/product_feeds.json'
-                );
-                
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-                
-                const data = await response.json();
+                const data = await makeAPICall('/admin/api/2025-10/product_feeds.json');
                 displayApiResult(data, 'Product feeds retrieved');
                 
             } catch (error) {
@@ -621,7 +563,8 @@
         }
 
         // Event Listeners
-        refreshBtn.addEventListener('click', fetchShopInfo);
+        refreshBtn.addEventListener('click', () => location.reload());
+        getShopInfoBtn.addEventListener('click', testGetShopInfo);
         getProductsBtn.addEventListener('click', testGetProducts);
         createProductBtn.addEventListener('click', testCreateProduct);
         getMetaobjectDefsBtn.addEventListener('click', testGetMetaobjectDefinitions);
