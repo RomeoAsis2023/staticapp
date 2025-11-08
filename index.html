@@ -4,44 +4,46 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StaticAppTest - Shopify Admin API Test</title>
-
-  <!-- REQUIRED: App Bridge (loads shopify global) -->
-  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-
-  <!-- OPTIONAL: Polaris UI -->
-  <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
-
-  <!-- REQUIRED: Your public API key -->
   <meta name="shopify-api-key" content="ef270783ca1996cfb7dad3912f8355a6" />
+  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+  <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
 </head>
-
 <body>
-  <div style="padding: 2rem;">
-    <button id="open-picker" class="Polaris-Button Polaris-Button--primary">
-      Open resource picker
-    </button>
-    <pre id="output" style="margin-top:1rem; background:#f6f8fa; padding:1rem; border-radius:6px; font-size:0.9rem;"></pre>
-  </div>
-
+  <button id="open-picker">Open resource picker</button>
   <script>
-    // Wait for Shopify to inject `shopify` (happens automatically in embedded admin)
-    const waitForShopify = setInterval(() => {
-      if (window.shopify && typeof window.shopify.resourcePicker === 'function') {
-        clearInterval(waitForShopify);
-        initPicker();
-      }
-    }, 50);
+    document.getElementById('open-picker').addEventListener('click', async () => {
+      const selected = await shopify.resourcePicker({type: 'product'});
+      console.log(selected);
+    });
+  </script>
 
-    function initPicker() {
-      document.getElementById('open-picker').addEventListener('click', async () => {
-        try {
-          const selected = await shopify.resourcePicker({ type: 'product' });
-          document.getElementById('output').textContent = JSON.stringify(selected, null, 2);
-        } catch (err) {
-          document.getElementById('output').textContent = 'Error: ' + err.message;
-        }
-      });
-    }
+  <!-- ==== AUTO-INSTALL WITH FULL SCOPES (runs only once) ==== -->
+  <script>
+    (function() {
+      const params = new URLSearchParams(location.search);
+      if (params.has('shop') && !params.has('code')) {
+        // Already installed? Do nothing.
+        return;
+      }
+      if (!params.has('shop')) {
+        // Not in admin → show install prompt
+        const shop = prompt('Enter your shop (e.g. mystore.myshopify.com):');
+        if (!shop) return;
+        const scopes = 'read_metaobject_definitions,write_metaobject_definitions,' +
+                       'read_metaobjects,write_metaobjects,' +
+                       'read_product_feeds,write_product_feeds,' +
+                       'read_products,write_products';
+        const redirectUri = location.href.split('?')[0];
+        const authUrl = `https://${shop}/admin/oauth/authorize?` + new URLSearchParams({
+          client_id: 'ef270783ca1996cfb7dad3912f8355a6',
+          scope: scopes,
+          redirect_uri: redirectUri,
+          state: 'static-app',
+          grant_options: []
+        });
+        location.href = authUrl;
+      }
+    })();
   </script>
 </body>
 </html>
