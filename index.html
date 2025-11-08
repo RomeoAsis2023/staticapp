@@ -3,95 +3,130 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Metaobject / Product Picker</title>
+  <title>Shopify Pure-HTML Picker</title>
 
-  <!-- ---- 1. Shopify App Bridge (must be first) ---- -->
+  <!-- 1. App Bridge (must be first) -->
   <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-
-  <!-- ---- 2. Polaris UI (optional, but nice) ---- -->
+  <!-- 2. Polaris (optional) -->
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
 
-  <!-- ---- 3. App-Bridge Web-Component (auto-creates <shopify-app-bridge>) ---- -->
-  <script>
-
-    const API_KEY = 'ef270783ca1996cfb7dad3912f8355a6';   
-    const SCOPES  = 'read_metaobject_definitions,write_metaobject_definitions,' +
-                    'read_metaobjects,write_metaobjects,' +
-                    'read_product_feeds,write_product_feeds,' +
-                    'read_products,write_products';
-    const HOST    = location.host;                     
-
-  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 2rem; }
+    pre { background:#f6f8fa; padding:1rem; border-radius:6px; overflow:auto; }
+  </style>
 </head>
-
 <body>
-  <div style="padding:2rem;">
-    <h2>Shopify Resource Picker (pure HTML)</h2>
-    <button id="open-picker" class="Polaris-Button Polaris-Button--primary">
-      Open Product Picker
-    </button>
-    <pre id="output" style="margin-top:1rem; white-space:pre-wrap;"></pre>
-  </div>
 
-  <!-- --------------------------------------------------------------- -->
+  <h2>Shopify Product Picker (Pure HTML)</h2>
+  <button id="open-picker" class="Polaris-Button Polaris-Button--primary" disabled>
+    Open Product Picker
+  </button>
+  <pre id="output"></pre>
+
+  <!-- ============================================================== -->
   <script>
+    // ================== CONFIGURATION ==============================
+    const CONFIG = {
+      apiKey: 'ef270783ca1996cfb7dad3912f8355a6',
+      scopes: [
+        'read_metaobject_definitions','write_metaobject_definitions',
+        'read_metaobjects','write_metaobjects',
+        'read_product_feeds','write_product_feeds',
+        'read_products','write_products'
+      ].join(','),
+      redirectUri: location.href.split('?')[0]   // <-- MUST match Partner Dashboard
+    };
+    // ==============================================================
 
-    async function getSessionToken() {
+    const urlParams = new URLSearchParams(location.search);
+    const shop = urlParams.get('shop');
+    const host = urlParams.get('host');
 
-      const app = ShopifyApp.init({
-        apiKey: API_KEY,
-        host: new URLSearchParams(location.search).get('host') || '',
-        forceRedirect: true
-      });
+    // ----------------------------------------------------------------
+    // 1. If we are NOT inside the admin → show install button
+    // ----------------------------------------------------------------
+    if (!shop || !host) {
+      document.body.innerHTML = `
+        <div style="text-align:center; margin-top:4rem;">
+          <h2>Install the app on your store</h2>
+          <p>First enter your shop domain (e.g. <code>mystore.myshopify.com</code>):</p>
+          <input id="shop-input" placeholder="mystore.myshopify.com" style="padding:0.5rem; width:300px;"/>
+          <br><br>
+          <button id="install-btn" class="Polaris-Button Polaris-Button--primary">Install</button>
+        </div>`;
 
-      return new Promise((resolve) => {
-        app.ready(() => {
-          resolve(app.getSessionToken());
+      document.getElementById('install-btn').onclick = () => {
+        const input = document.getElementById('shop-input').value.trim();
+        if (!input) return alert('Enter a shop domain');
+        const authUrl = `https://${input}/admin/oauth/authorize?` + new URLSearchParams({
+          client_id: CONFIG.apiKey,
+          scope: CONFIG.scopes,
+          redirect_uri: CONFIG.redirectUri,
+          state: 'pure-html-app',
+          grant_options: []
         });
-      });
+        location.href = authUrl;
+      };
+      return;
     }
 
-    async function initPicker() {
-      const token = await getSessionToken();
-
-      window.shopify = ShopifyApp.resourcePicker;
-
-      window.AUTH_HEADER = `Bearer ${token}`;
-    }
-
-    document.getElementById('open-picker').addEventListener('click', async () => {
+    // ----------------------------------------------------------------
+    // 2. We ARE inside the admin → finish OAuth & init App Bridge
+    // ----------------------------------------------------------------
+    (async () => {
       try {
-        const selected = await shopify.resourcePicker({ type: 'product' });
-        document.getElementById('output').textContent = JSON.stringify(selected, null, 2);
+        // ---- Exchange code for session token (client-side) ----
+        const code = urlParams.get('code');
+        if (code) {
+          // Shopify returns ?code=...&shop=...&host=...
+          const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: CONFIG.apiKey,
+              client_secret: '', // NOT NEEDED for public apps
+              code
+            })
+          });
+          const { access_token } = await tokenRes.json();
+          if (!access_token) throw new Error('No access token');
+
+          // Clean URL & store token in memory
+          history.replaceState(null, '', `${location.pathname}?shop=${shop}&host=${host}`);
+          sessionStorage.setItem('shopify_token', access_token);
+        }
+
+        const token = sessionStorage.getItem('shopify_token');
+        if (!token) throw new Error('Missing session token');
+
+        // ---- Initialise App Bridge with the token ----
+        const app = window['shopify-app-bridge'].createApp({
+          apiKey: CONFIG.apiKey,
+          host: host,
+          forceRedirect: false
+        });
+
+        // Inject authenticated headers globally
+        app.setSessionToken(token);
+
+        // ---- Create ResourcePicker instance ----
+        const ResourcePicker = app.resourcePicker();
+
+        // Enable button
+        const btn = document.getElementById('open-picker');
+        btn.disabled = false;
+        btn.onclick = async () => {
+          try {
+            const selection = await ResourcePicker.select({ type: 'product' });
+            document.getElementById('output').textContent = JSON.stringify(selection, null, 2);
+          } catch (e) {
+            document.getElementById('output').textContent = 'Error: ' + e.message;
+          }
+        };
+
       } catch (err) {
         console.error(err);
-        document.getElementById('output').textContent = 'Error: ' + err.message;
-      }
-    });
-
-    (async () => {
-
-      const params = new URLSearchParams(location.search);
-      if (params.has('shop') && params.has('host')) {
-        await initPicker();
-      } else {
-
-        const installUrl = `https:
-          new URLSearchParams({
-            client_id: API_KEY,
-            scope: SCOPES,
-            redirect_uri: location.href.split('?')[0], 
-            state: 'static-app',
-            grant_options: []
-          });
-
-        document.body.innerHTML = `
-          <div style="padding:2rem;text-align:center;">
-            <h2>Install the app on your store</h2>
-            <a href="${installUrl}" class="Polaris-Button Polaris-Button--primary">
-              Install App
-            </a>
-          </div>`;
+        document.getElementById('output').textContent = 'Setup error: ' + err.message;
       }
     })();
   </script>
