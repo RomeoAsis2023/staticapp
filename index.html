@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StaticAppTest - Shopify Admin API Test</title>
+    <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
+    <script src="https://unpkg.com/@shopify/app-bridge-utils@3"></script>
     <style>
         :root {
             --primary-color: #5e8e3e;
@@ -26,19 +28,20 @@
             background-color: var(--background-color);
             color: var(--text-color);
             line-height: 1.6;
+            padding: 20px;
         }
         
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
         }
         
         header {
             background-color: white;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 15px 0;
+            padding: 15px 20px;
             margin-bottom: 30px;
+            border-radius: 8px;
         }
         
         .header-content {
@@ -165,6 +168,8 @@
         pre {
             white-space: pre-wrap;
             word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
         }
         
         .hidden {
@@ -215,13 +220,13 @@
             border-radius: 8px;
         }
         
-        .instructions ol {
-            margin-left: 20px;
-            margin-top: 10px;
+        .scope-list {
+            margin: 10px 0;
+            padding-left: 20px;
         }
         
-        .instructions li {
-            margin-bottom: 10px;
+        .scope-list li {
+            margin-bottom: 5px;
         }
         
         footer {
@@ -231,56 +236,44 @@
             color: #666;
             border-top: 1px solid var(--border-color);
         }
-        
-        .scope-list {
-            margin: 10px 0;
-            padding-left: 20px;
-        }
-        
-        .scope-list li {
-            margin-bottom: 5px;
-        }
     </style>
 </head>
 <body>
     <header>
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">StaticAppTest</div>
-                <div class="auth-section">
-                    <button id="disconnectBtn" class="secondary">Disconnect</button>
-                    <button id="authBtn">Connect Store</button>
-                </div>
+        <div class="header-content">
+            <div class="logo">StaticAppTest</div>
+            <div class="auth-section">
+                <button id="refreshBtn" class="secondary">Refresh Data</button>
             </div>
         </div>
     </header>
     
     <div class="container">
-        <div id="appContent" class="hidden">
+        <div id="appContent">
             <div class="card">
                 <div class="app-status">
-                    <div id="statusIndicator" class="status-indicator"></div>
-                    <h2 id="statusText">App Status: Not Connected</h2>
+                    <div id="statusIndicator" class="status-indicator connected"></div>
+                    <h2 id="statusText">App Status: Connected</h2>
                 </div>
                 
-                <div id="storeInfo" class="hidden">
+                <div id="storeInfo">
                     <h3>Store Information</h3>
                     <div class="store-info">
                         <div class="info-item">
                             <div class="info-label">Store Name</div>
-                            <div id="storeName" class="info-value">-</div>
+                            <div id="storeName" class="info-value">Loading...</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Store Domain</div>
-                            <div id="storeDomain" class="info-value">-</div>
+                            <div id="storeDomain" class="info-value">Loading...</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Plan</div>
-                            <div id="storePlan" class="info-value">-</div>
+                            <div id="storePlan" class="info-value">Loading...</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Email</div>
-                            <div id="storeEmail" class="info-value">-</div>
+                            <div id="storeEmail" class="info-value">Loading...</div>
                         </div>
                     </div>
                 </div>
@@ -295,8 +288,8 @@
                 <div class="api-section">
                     <h4>Products API</h4>
                     <div class="api-actions">
-                        <button id="getProductsBtn" disabled>Get Products</button>
-                        <button id="createProductBtn" disabled>Create Test Product</button>
+                        <button id="getProductsBtn">Get Products</button>
+                        <button id="createProductBtn">Create Test Product</button>
                         <button id="updateProductBtn" disabled>Update Product</button>
                     </div>
                 </div>
@@ -304,16 +297,16 @@
                 <div class="api-section">
                     <h4>Metaobjects API</h4>
                     <div class="api-actions">
-                        <button id="getMetaobjectDefsBtn" disabled>Get Metaobject Definitions</button>
+                        <button id="getMetaobjectDefsBtn">Get Metaobject Definitions</button>
                         <button id="createMetaobjectDefBtn" disabled>Create Metaobject Definition</button>
-                        <button id="getMetaobjectsBtn" disabled>Get Metaobjects</button>
+                        <button id="getMetaobjectsBtn">Get Metaobjects</button>
                     </div>
                 </div>
                 
                 <div class="api-section">
                     <h4>Product Feeds API</h4>
                     <div class="api-actions">
-                        <button id="getProductFeedsBtn" disabled>Get Product Feeds</button>
+                        <button id="getProductFeedsBtn">Get Product Feeds</button>
                         <button id="createProductFeedBtn" disabled>Create Product Feed</button>
                     </div>
                 </div>
@@ -325,45 +318,27 @@
             </div>
         </div>
         
-        <div id="loadingScreen" class="loading">
+        <div id="loadingScreen" class="loading hidden">
             <div class="spinner"></div>
-            <p>Loading app...</p>
-        </div>
-        
-        <div id="setupInstructions" class="instructions">
-            <h3>StaticAppTest Setup</h3>
-            <p>This app is configured with the following scopes:</p>
-            <ul class="scope-list">
-                <li>read_metaobject_definitions, write_metaobject_definitions</li>
-                <li>read_metaobjects, write_metaobjects</li>
-                <li>read_product_feeds, write_product_feeds</li>
-                <li>read_products, write_products</li>
-            </ul>
-            <p>Click "Connect Store" to install the app and test API operations.</p>
+            <p>Loading...</p>
         </div>
     </div>
     
     <footer>
-        <div class="container">
-            <p>StaticAppTest &copy; 2023 - Shopify Admin API Test</p>
-        </div>
+        <p>StaticAppTest &copy; 2023 - Shopify Admin API Test</p>
     </footer>
 
     <script>
-        // Configuration - Update with your app's Client ID
-        const SHOPIFY_CLIENT_ID = 'ef270783ca1996cfb7dad3912f8355a6'; // Replace with your actual Client ID
-        const SHOPIFY_SCOPE = 'read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_product_feeds,write_product_feeds,read_products,write_products';
-        const REDIRECT_URI = 'https://romeoasis2023.github.io/staticapp/';
+        // Shopify App Bridge configuration
+        let app;
+        let utils;
         
         // DOM Elements
         const appContent = document.getElementById('appContent');
         const loadingScreen = document.getElementById('loadingScreen');
-        const setupInstructions = document.getElementById('setupInstructions');
-        const authBtn = document.getElementById('authBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
         const statusIndicator = document.getElementById('statusIndicator');
         const statusText = document.getElementById('statusText');
-        const storeInfo = document.getElementById('storeInfo');
         const storeName = document.getElementById('storeName');
         const storeDomain = document.getElementById('storeDomain');
         const storePlan = document.getElementById('storePlan');
@@ -375,156 +350,80 @@
         // API Action Buttons
         const getProductsBtn = document.getElementById('getProductsBtn');
         const createProductBtn = document.getElementById('createProductBtn');
-        const updateProductBtn = document.getElementById('updateProductBtn');
         const getMetaobjectDefsBtn = document.getElementById('getMetaobjectDefsBtn');
-        const createMetaobjectDefBtn = document.getElementById('createMetaobjectDefBtn');
         const getMetaobjectsBtn = document.getElementById('getMetaobjectsBtn');
         const getProductFeedsBtn = document.getElementById('getProductFeedsBtn');
-        const createProductFeedBtn = document.getElementById('createProductFeedBtn');
-        
-        // Check if we're returning from OAuth
-        const urlParams = new URLSearchParams(window.location.search);
-        const shop = urlParams.get('shop');
-        const code = urlParams.get('code');
-        const hmac = urlParams.get('hmac');
-        const timestamp = urlParams.get('timestamp');
-        const host = urlParams.get('host');
-        
-        // State
-        let accessToken = localStorage.getItem('shopify_access_token');
-        let connectedShop = localStorage.getItem('shopify_shop');
-        let shopifyHost = localStorage.getItem('shopify_host');
-        
-        // Initialize the app
-        function initApp() {
-            // Check if we have an access token
-            if (accessToken && connectedShop) {
-                showAppConnected();
-                fetchShopInfo();
-            } else if (code && shop && hmac && timestamp && host) {
-                // We're returning from OAuth - store the host parameter
-                shopifyHost = host;
-                localStorage.setItem('shopify_host', host);
-                exchangeCodeForToken();
-            } else {
-                showAppDisconnected();
+
+        // Initialize Shopify App Bridge
+        function initShopifyApp() {
+            // Get parameters from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const host = urlParams.get('host');
+            const shop = urlParams.get('shop');
+
+            if (!host) {
+                showError('Missing host parameter. This app must be run within the Shopify admin.');
+                return;
             }
-            
-            // Hide loading screen after a short delay
-            setTimeout(() => {
-                loadingScreen.classList.add('hidden');
-                appContent.classList.remove('hidden');
-            }, 1000);
-        }
-        
-        // Show app in disconnected state
-        function showAppDisconnected() {
-            statusIndicator.classList.remove('connected');
-            statusText.textContent = 'App Status: Not Connected';
-            storeInfo.classList.add('hidden');
-            setupInstructions.classList.remove('hidden');
-            
-            // Disable API buttons
-            disableAllApiButtons();
-            
-            // Update button text
-            authBtn.textContent = 'Connect Store';
-        }
-        
-        // Show app in connected state
-        function showAppConnected() {
-            statusIndicator.classList.add('connected');
-            statusText.textContent = `App Status: Connected to ${connectedShop}`;
-            storeInfo.classList.remove('hidden');
-            setupInstructions.classList.add('hidden');
-            
-            // Enable API buttons
-            enableAllApiButtons();
-            
-            // Update button text
-            authBtn.textContent = 'Reconnect Store';
-        }
-        
-        // Handle OAuth flow
-        function beginOAuth() {
-            if (!shop) {
-                // If we don't have a shop parameter, prompt the user
-                const shopDomain = prompt('Enter your Shopify store domain (e.g., mystore.myshopify.com):');
-                if (shopDomain) {
-                    // Redirect to Shopify OAuth
-                    const authUrl = `https://${shopDomain}/admin/oauth/authorize?client_id=${SHOPIFY_CLIENT_ID}&scope=${SHOPIFY_SCOPE}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
-                    window.location.href = authUrl;
-                }
-            } else {
-                // We have a shop parameter, proceed with OAuth
-                const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${SHOPIFY_CLIENT_ID}&scope=${SHOPIFY_SCOPE}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
-                window.location.href = authUrl;
+
+            // Initialize App Bridge
+            app = window.shopifyApp.default({
+                apiKey: 'ef270783ca1996cfb7dad3912f8355a6', // Replace with your Client ID
+                host: host,
+                forceRedirect: true
+            });
+
+            utils = window.shopifyAppBridgeUtils;
+
+            // Update UI with shop info
+            if (shop) {
+                storeDomain.textContent = shop;
+                statusText.textContent = `App Status: Connected to ${shop}`;
             }
+
+            // Load initial data
+            fetchShopInfo();
         }
-        
-        // Exchange authorization code for access token
-        async function exchangeCodeForToken() {
-            try {
-                showLoading('Completing authentication...');
-                
-                // In a real app, this should be done server-side
-                // For this demo, we'll use a proxy service or show instructions
-                showError('Client-side token exchange is not secure. Please set up a server endpoint to handle the OAuth token exchange.', true);
-                
-                // Clear URL parameters to avoid re-triggering OAuth flow on refresh
-                const cleanUrl = window.location.origin + window.location.pathname;
-                window.history.replaceState({}, document.title, cleanUrl);
-                
-            } catch (error) {
-                console.error('Token exchange error:', error);
-                showError('Failed to complete authentication. Please try again.');
-            }
-        }
-        
-        // Fetch shop information using the access token
+
+        // Fetch shop information
         async function fetchShopInfo() {
             try {
-                if (!accessToken) {
-                    showError('No access token available. Please reconnect your store.');
-                    return;
-                }
+                showLoading('Loading store information...');
                 
-                // For embedded apps, we need to use the Shopify Admin API with the host parameter
-                const response = await fetch(`https://${connectedShop}/admin/api/2025-10/shop.json`, {
-                    headers: {
-                        'X-Shopify-Access-Token': accessToken
-                    }
-                });
-                
+                // Use App Bridge to make authenticated requests
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/shop.json'
+                );
+
                 if (!response.ok) {
                     throw new Error(`API request failed: ${response.status} ${response.statusText}`);
                 }
-                
+
                 const data = await response.json();
                 
                 // Update UI with shop data
                 storeName.textContent = data.shop.name;
-                storeDomain.textContent = data.shop.domain;
                 storePlan.textContent = data.shop.plan_name || 'N/A';
                 storeEmail.textContent = data.shop.email;
                 
-                showSuccess('Successfully retrieved store information.');
+                showSuccess('Store information loaded successfully');
                 
             } catch (error) {
                 console.error('Error fetching shop info:', error);
-                showError('Failed to fetch store information. The access token may be invalid.');
+                showError(`Failed to fetch store information: ${error.message}`);
             }
         }
-        
+
         // API Test Functions
         async function testGetProducts() {
             try {
                 showLoading('Fetching products...');
-                const response = await fetch(`https://${connectedShop}/admin/api/2025-10/products.json?limit=5`, {
-                    headers: {
-                        'X-Shopify-Access-Token': accessToken
-                    }
-                });
+                
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/products.json?limit=5'
+                );
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -536,7 +435,7 @@
                 showError(`Failed to fetch products: ${error.message}`);
             }
         }
-        
+
         async function testCreateProduct() {
             try {
                 showLoading('Creating test product...');
@@ -547,23 +446,28 @@
                         body_html: "<p>This is a test product created by StaticAppTest</p>",
                         vendor: "StaticAppTest",
                         product_type: "Test",
+                        status: "active",
                         variants: [
                             {
                                 price: "19.99",
-                                sku: "TEST-001"
+                                sku: "TEST-001",
+                                inventory_management: "shopify"
                             }
                         ]
                     }
                 };
                 
-                const response = await fetch(`https://${connectedShop}/admin/api/2025-10/products.json`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Shopify-Access-Token': accessToken
-                    },
-                    body: JSON.stringify(productData)
-                });
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/products.json',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(productData)
+                    }
+                );
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -575,15 +479,15 @@
                 showError(`Failed to create product: ${error.message}`);
             }
         }
-        
+
         async function testGetMetaobjectDefinitions() {
             try {
                 showLoading('Fetching metaobject definitions...');
-                const response = await fetch(`https://${connectedShop}/admin/api/2025-10/metafield_definitions.json?owner_type=metaobject_definition`, {
-                    headers: {
-                        'X-Shopify-Access-Token': accessToken
-                    }
-                });
+                
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/metafields.json?metafield[owner_type]=metaobject_definition&limit=10'
+                );
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -595,15 +499,59 @@
                 showError(`Failed to fetch metaobject definitions: ${error.message}`);
             }
         }
-        
+
+        async function testGetMetaobjects() {
+            try {
+                showLoading('Fetching metaobjects...');
+                
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/graphql.json',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            query: `
+                                query {
+                                    metaobjects(first: 5, type: ".*") {
+                                        edges {
+                                            node {
+                                                id
+                                                type
+                                                fields {
+                                                    key
+                                                    value
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            `
+                        })
+                    }
+                );
+                
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+                
+                const data = await response.json();
+                displayApiResult(data, 'Metaobjects retrieved');
+                
+            } catch (error) {
+                console.error('Error fetching metaobjects:', error);
+                showError(`Failed to fetch metaobjects: ${error.message}`);
+            }
+        }
+
         async function testGetProductFeeds() {
             try {
                 showLoading('Fetching product feeds...');
-                const response = await fetch(`https://${connectedShop}/admin/api/2025-10/product_feeds.json`, {
-                    headers: {
-                        'X-Shopify-Access-Token': accessToken
-                    }
-                });
+                
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/product_feeds.json'
+                );
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -615,90 +563,57 @@
                 showError(`Failed to fetch product feeds: ${error.message}`);
             }
         }
-        
+
         // Helper Functions
         function displayApiResult(data, message) {
             apiResponse.textContent = JSON.stringify(data, null, 2);
             apiResult.classList.remove('hidden');
             showSuccess(message);
         }
-        
+
         function showLoading(text = 'Loading...') {
             message.textContent = text;
             message.className = 'message';
             message.classList.remove('hidden');
+            loadingScreen.classList.remove('hidden');
         }
-        
-        function showError(errorText, persistent = false) {
+
+        function hideLoading() {
+            loadingScreen.classList.add('hidden');
+        }
+
+        function showError(errorText) {
             message.textContent = errorText;
             message.className = 'message error';
             message.classList.remove('hidden');
+            hideLoading();
             
-            if (!persistent) {
-                setTimeout(() => {
-                    message.classList.add('hidden');
-                }, 5000);
-            }
+            setTimeout(() => {
+                message.classList.add('hidden');
+            }, 5000);
         }
-        
+
         function showSuccess(successText) {
             message.textContent = successText;
             message.className = 'message success';
             message.classList.remove('hidden');
+            hideLoading();
             
             setTimeout(() => {
                 message.classList.add('hidden');
             }, 3000);
         }
-        
-        function disableAllApiButtons() {
-            const apiButtons = [
-                getProductsBtn, createProductBtn, updateProductBtn,
-                getMetaobjectDefsBtn, createMetaobjectDefBtn, getMetaobjectsBtn,
-                getProductFeedsBtn, createProductFeedBtn
-            ];
-            
-            apiButtons.forEach(btn => {
-                btn.disabled = true;
-            });
-        }
-        
-        function enableAllApiButtons() {
-            const apiButtons = [
-                getProductsBtn, createProductBtn, updateProductBtn,
-                getMetaobjectDefsBtn, createMetaobjectDefBtn, getMetaobjectsBtn,
-                getProductFeedsBtn, createProductFeedBtn
-            ];
-            
-            apiButtons.forEach(btn => {
-                btn.disabled = false;
-            });
-        }
-        
-        // Disconnect the app
-        function disconnectApp() {
-            localStorage.removeItem('shopify_access_token');
-            localStorage.removeItem('shopify_shop');
-            localStorage.removeItem('shopify_host');
-            accessToken = null;
-            connectedShop = null;
-            shopifyHost = null;
-            showAppDisconnected();
-            showSuccess('Successfully disconnected from store.');
-        }
-        
+
         // Event Listeners
-        authBtn.addEventListener('click', beginOAuth);
-        disconnectBtn.addEventListener('click', disconnectApp);
-        
-        // API Action Listeners
+        refreshBtn.addEventListener('click', fetchShopInfo);
         getProductsBtn.addEventListener('click', testGetProducts);
         createProductBtn.addEventListener('click', testCreateProduct);
         getMetaobjectDefsBtn.addEventListener('click', testGetMetaobjectDefinitions);
+        getMetaobjectsBtn.addEventListener('click', testGetMetaobjects);
         getProductFeedsBtn.addEventListener('click', testGetProductFeeds);
-        
+
         // Initialize the app when the page loads
-        document.addEventListener('DOMContentLoaded', initApp);
+        document.addEventListener('DOMContentLoaded', initShopifyApp);
     </script>
 </body>
 </html>
