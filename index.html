@@ -3,131 +3,98 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shopify Pure-HTML Picker</title>
+  <title>StaticAppTest - Shopify Admin API Test</title>
 
-  <!-- 1. App Bridge (must be first) -->
+  <!-- 1. REQUIRED: App Bridge -->
   <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-  <!-- 2. Polaris (optional) -->
+
+  <!-- 2. OPTIONAL: Polaris UI -->
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
 
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 2rem; }
-    pre { background:#f6f8fa; padding:1rem; border-radius:6px; overflow:auto; }
-  </style>
-</head>
-<body>
-
-  <h2>Shopify Product Picker (Pure HTML)</h2>
-  <button id="open-picker" class="Polaris-Button Polaris-Button--primary" disabled>
-    Open Product Picker
-  </button>
-  <pre id="output"></pre>
-
-  <!-- ============================================================== -->
+  <!-- 3. APP CONFIG -->
+  <meta name="shopify-api-key" content="ef270783ca1996cfb7dad3912f8355a6" />
   <script>
-    // ================== CONFIGURATION ==============================
-    const CONFIG = {
-      apiKey: 'ef270783ca1996cfb7dad3912f8355a6',
-      scopes: [
-        'read_metaobject_definitions','write_metaobject_definitions',
-        'read_metaobjects','write_metaobjects',
-        'read_product_feeds','write_product_feeds',
-        'read_products','write_products'
-      ].join(','),
-      redirectUri: location.href.split('?')[0]   // <-- MUST match Partner Dashboard
-    };
-    // ==============================================================
+    const SCOPES = 'read_metaobject_definitions,write_metaobject_definitions,' +
+                   'read_metaobjects,write_metaobjects,' +
+                   'read_product_feeds,write_product_feeds,' +
+                   'read_products,write_products';
+    const REDIRECT_URI = location.href.split('?')[0]; // MUST match Partner Dashboard
+  </script>
+</head>
 
-    const urlParams = new URLSearchParams(location.search);
-    const shop = urlParams.get('shop');
-    const host = urlParams.get('host');
+<body>
+  <div style="padding:2rem;">
+    <button id="open-picker" class="Polaris-Button Polaris-Button--primary" disabled>
+      Open resource picker
+    </button>
+    <pre id="output" style="margin-top:1rem; background:#f6f8fa; padding:1rem; border-radius:6px;"></pre>
+  </div>
 
-    // ----------------------------------------------------------------
-    // 1. If we are NOT inside the admin → show install button
-    // ----------------------------------------------------------------
-    if (!shop || !host) {
-      document.body.innerHTML = `
-        <div style="text-align:center; margin-top:4rem;">
-          <h2>Install the app on your store</h2>
-          <p>First enter your shop domain (e.g. <code>mystore.myshopify.com</code>):</p>
-          <input id="shop-input" placeholder="mystore.myshopify.com" style="padding:0.5rem; width:300px;"/>
-          <br><br>
-          <button id="install-btn" class="Polaris-Button Polaris-Button--primary">Install</button>
-        </div>`;
+  <script>
+    (function () {
+      const params = new URLSearchParams(location.search);
+      const shop = params.get('shop');
+      const host = params.get('host');
 
-      document.getElementById('install-btn').onclick = () => {
-        const input = document.getElementById('shop-input').value.trim();
-        if (!input) return alert('Enter a shop domain');
-        const authUrl = `https://${input}/admin/oauth/authorize?` + new URLSearchParams({
-          client_id: CONFIG.apiKey,
-          scope: CONFIG.scopes,
-          redirect_uri: CONFIG.redirectUri,
-          state: 'pure-html-app',
-          grant_options: []
-        });
-        location.href = authUrl;
-      };
-      return;
-    }
+      // --------------------------------------------------------------
+      // 1. NOT inside Shopify admin → show install UI
+      // --------------------------------------------------------------
+      if (!shop || !host) {
+        document.body.innerHTML = `
+          <div style="text-align:center; margin-top:4rem;">
+            <h2>Install the app</h2>
+            <p>Enter your shop domain:</p>
+            <input id="shop-input" placeholder="mystore.myshopify.com" style="padding:0.5rem; width:300px;"/>
+            <br><br>
+            <button id="install" class="Polaris-Button Polaris-Button--primary">Install</button>
+          </div>`;
 
-    // ----------------------------------------------------------------
-    // 2. We ARE inside the admin → finish OAuth & init App Bridge
-    // ----------------------------------------------------------------
-    (async () => {
-      try {
-        // ---- Exchange code for session token (client-side) ----
-        const code = urlParams.get('code');
-        if (code) {
-          // Shopify returns ?code=...&shop=...&host=...
-          const tokenRes = await fetch(`https://${shop}/admin/oauth/access_token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              client_id: CONFIG.apiKey,
-              client_secret: '', // NOT NEEDED for public apps
-              code
-            })
+        document.getElementById('install').onclick = () => {
+          const input = document.getElementById('shop-input').value.trim();
+          if (!input) return alert('Enter a shop domain');
+          const url = `https://${input}/admin/oauth/authorize?` + new URLSearchParams({
+            client_id: document.querySelector('meta[name="shopify-api-key"]').content,
+            scope: SCOPES,
+            redirect_uri: REDIRECT_URI,
+            state: 'static-app',
+            grant_options: []
           });
-          const { access_token } = await tokenRes.json();
-          if (!access_token) throw new Error('No access token');
-
-          // Clean URL & store token in memory
-          history.replaceState(null, '', `${location.pathname}?shop=${shop}&host=${host}`);
-          sessionStorage.setItem('shopify_token', access_token);
-        }
-
-        const token = sessionStorage.getItem('shopify_token');
-        if (!token) throw new Error('Missing session token');
-
-        // ---- Initialise App Bridge with the token ----
-        const app = window['shopify-app-bridge'].createApp({
-          apiKey: CONFIG.apiKey,
-          host: host,
-          forceRedirect: false
-        });
-
-        // Inject authenticated headers globally
-        app.setSessionToken(token);
-
-        // ---- Create ResourcePicker instance ----
-        const ResourcePicker = app.resourcePicker();
-
-        // Enable button
-        const btn = document.getElementById('open-picker');
-        btn.disabled = false;
-        btn.onclick = async () => {
-          try {
-            const selection = await ResourcePicker.select({ type: 'product' });
-            document.getElementById('output').textContent = JSON.stringify(selection, null, 2);
-          } catch (e) {
-            document.getElementById('output').textContent = 'Error: ' + e.message;
-          }
+          location.href = url;
         };
-
-      } catch (err) {
-        console.error(err);
-        document.getElementById('output').textContent = 'Setup error: ' + err.message;
+        return;
       }
+
+      // --------------------------------------------------------------
+      // 2. INSIDE admin → initialise App Bridge
+      // --------------------------------------------------------------
+      const apiKey = document.querySelector('meta[name="shopify-api-key"]').content;
+
+      const app = AppBridge.createApp({
+        apiKey: apiKey,
+        host: host,
+        forceRedirect: true   // will redirect to OAuth if session missing
+      });
+
+      // Wait for App Bridge to be ready
+      app.ready(async () => {
+        try {
+          // Create the resource picker with authenticated session
+          const picker = app.resourcePicker();
+
+          const btn = document.getElementById('open-picker');
+          btn.disabled = false;
+          btn.onclick = async () => {
+            try {
+              const selected = await picker.select({ type: 'product' });
+              document.getElementById('output').textContent = JSON.stringify(selected, null, 2);
+            } catch (e) {
+              document.getElementById('output').textContent = 'Picker error: ' + e.message;
+            }
+          };
+        } catch (err) {
+          document.getElementById('output').textContent = 'Init error: ' + err.message;
+        }
+      });
     })();
   </script>
 </body>
