@@ -1,117 +1,510 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Static App – Products</title>
-  <style>
-    body {font-family:Arial,sans-serif;margin:20px;}
-    button{padding:10px 16px;font-size:16px;cursor:pointer;margin:5px;}
-    .product{border:1px solid #ddd;margin:12px 0;padding:12px;border-radius:8px;}
-    .product img{max-width:180px;margin-top:8px;}
-    .error{color:red;font-weight:bold;}
-    .loading{color:#555;}
-    .info{color:#0066cc;margin-top:15px;}
-  </style>
-  <script src="https://cdn.shopify.com/s/assets/external/app.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopify Admin API Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .config-section {
+            padding: 30px;
+            border-bottom: 1px solid #eee;
+            background: #f8f9fa;
+        }
+
+        .config-section h2 {
+            margin-bottom: 20px;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+        }
+
+        .api-section {
+            padding: 30px;
+        }
+
+        .api-section h2 {
+            margin-bottom: 20px;
+            color: #495057;
+        }
+
+        .api-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .response-area {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 300px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background: #28a745;
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+        }
+
+        .status-disconnected {
+            background: #dc3545;
+        }
+
+        .status-pending {
+            background: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .config-section, .api-section {
+                padding: 20px;
+            }
+
+            .api-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
+    <div class="container" data-ai-id="ai-el-main-container">
+        <header class="header" data-ai-id="ai-el-header">
+            <h1>🛍️ Shopify Admin API Tool</h1>
+            <p>Manage your Shopify store with full Admin API access - No CORS issues!</p>
+        </header>
 
-  <h1>Products from this store</h1>
-  <button id="loadBtn">Load Products</button>
-  <div id="output"></div>
+        <main class="main-content" data-ai-id="ai-el-main-content">
+            <section class="config-section" data-ai-id="ai-el-config-section">
+                <h2>
+                    <span class="status-indicator status-disconnected" id="connectionStatus"></span>
+                    Store Configuration
+                </h2>
+                
+                <div id="alertContainer"></div>
 
-  <script>
-    const PROXY_URL      = 'https://shopify-proxy-romeoasis.meoasis2014.workers.dev';
-    const API_VERSION    = '2025-10';
-    const CLIENT_ID      = 'ef270783ca1996cfb7dad3912f8355a6';
-    const CLIENT_SECRET  = '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';
-    const REDIRECT_URI   = 'https://romeoasis2023.github.io/staticapp/';
+                <div class="form-group">
+                    <label for="shopDomain">Shop Domain (without .myshopify.com)</label>
+                    <input type="text" id="shopDomain" placeholder="your-shop-name" />
+                </div>
 
-    const output = document.getElementById('output');
-    const btn    = document.getElementById('loadBtn');
+                <div class="form-group">
+                    <label for="accessToken">Admin API Access Token</label>
+                    <input type="password" id="accessToken" placeholder="shpat_..." />
+                </div>
 
-    function getShop() {
-      const shop = new URLSearchParams(location.search).get('shop');
-      return shop ? `https://${shop}` : null;
-    }
+                <button class="btn" onclick="testConnection()">Test Connection</button>
+                <button class="btn btn-success" onclick="saveConfig()">Save Configuration</button>
+                <button class="btn btn-danger" onclick="clearConfig()">Clear Configuration</button>
+            </section>
 
-    function startOAuth(shop) {
-      const url = `${shop}/admin/oauth/authorize?client_id=${CLIENT_ID}&scope=read_products&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&state=staticapp`;
-      window.top.location.href = url;
-    }
+            <section class="api-section" data-ai-id="ai-el-api-section">
+                <h2>API Operations</h2>
+                
+                <div class="api-controls">
+                    <button class="btn" onclick="getShopInfo()">Get Shop Info</button>
+                    <button class="btn" onclick="getProducts()">Get Products</button>
+                    <button class="btn" onclick="getOrders()">Get Orders</button>
+                    <button class="btn" onclick="getCustomers()">Get Customers</button>
+                    <button class="btn" onclick="getCollections()">Get Collections</button>
+                    <button class="btn" onclick="getInventory()">Get Inventory</button>
+                    <button class="btn btn-success" onclick="createProduct()">Create Test Product</button>
+                    <button class="btn btn-danger" onclick="clearResponse()">Clear Response</button>
+                </div>
 
-    async function exchangeCode(shop, code) {
-      const tokenUrl = `${shop}/admin/oauth/access_token`;
-      const res = await fetch(tokenUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET, code })
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Token failed: ${txt}`);
-      }
-      return (await res.json()).access_token;
-    }
+                <div class="form-group">
+                    <label for="customEndpoint">Custom API Endpoint (e.g., /admin/api/2023-10/products.json)</label>
+                    <input type="text" id="customEndpoint" placeholder="/admin/api/2023-10/..." />
+                    <button class="btn" onclick="callCustomEndpoint()" style="margin-top: 10px;">Call Custom Endpoint</button>
+                </div>
 
-    async function loadProductsWithToken(token, shop) {
-      const proxyUrl = `${PROXY_URL}/admin/api/${API_VERSION}/products.json?limit=10&shop=${encodeURIComponent(shop)}&token=${token}`;
-      const res = await fetch(proxyUrl);
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`Proxy error: ${txt}`);
-      }
+                <div class="response-area" id="responseArea">
+                    Response will appear here...
+                </div>
+            </section>
+        </main>
+    </div>
 
-      const { products } = await res.json();
-      if (!products?.length) {
-        output.innerHTML = '<p>No products found.</p>';
-        return;
-      }
+    <script>
+        // Configuration management
+        let config = {
+            shopDomain: '',
+            accessToken: '',
+            apiVersion: '2023-10'
+        };
 
-      output.innerHTML = `<h2>${products.length} Products</h2>`;
-      products.forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'product';
-        div.innerHTML = `
-          <h3>${p.title}</h3>
-          <p>ID: ${p.id} | Handle: ${p.handle}</p>
-          <p>Price: $${p.variants[0]?.price || 'N/A'}</p>
-          ${p.images[0]?.src ? `<img src="${p.images[0].src}" onerror="this.style.display='none'">` : ''}
-        `;
-        output.appendChild(div);
-      });
-    }
+        // Load saved configuration on page load
+        window.addEventListener('load', function() {
+            loadConfig();
+        });
 
-    async function loadProducts() {
-      output.innerHTML = '<p class="loading">Loading...</p>';
-      btn.disabled = true;
+        function loadConfig() {
+            const saved = localStorage.getItem('shopifyConfig');
+            if (saved) {
+                config = JSON.parse(saved);
+                document.getElementById('shopDomain').value = config.shopDomain || '';
+                document.getElementById('accessToken').value = config.accessToken || '';
+                if (config.shopDomain && config.accessToken) {
+                    updateConnectionStatus('connected');
+                    showAlert('Configuration loaded successfully!', 'success');
+                }
+            }
+        }
 
-      const shop = getShop();
-      if (!shop) {
-        output.innerHTML = '<p class="error">Open from Shopify Admin.</p>';
-        btn.disabled = false;
-        return;
-      }
+        function saveConfig() {
+            config.shopDomain = document.getElementById('shopDomain').value.trim();
+            config.accessToken = document.getElementById('accessToken').value.trim();
+            
+            if (!config.shopDomain || !config.accessToken) {
+                showAlert('Please fill in both shop domain and access token!', 'error');
+                return;
+            }
 
-      const code = new URLSearchParams(location.search).get('code');
-      if (!code) {
-        startOAuth(shop);
-        return;
-      }
+            localStorage.setItem('shopifyConfig', JSON.stringify(config));
+            showAlert('Configuration saved successfully!', 'success');
+            updateConnectionStatus('connected');
+        }
 
-      try {
-        const token = await exchangeCode(shop, code);
-        await loadProductsWithToken(token, shop);
-      } catch (err) {
-        output.innerHTML = `<p class="error">${err.message}</p>`;
-      } finally {
-        btn.disabled = false;
-      }
-    }
+        function clearConfig() {
+            localStorage.removeItem('shopifyConfig');
+            config = { shopDomain: '', accessToken: '', apiVersion: '2023-10' };
+            document.getElementById('shopDomain').value = '';
+            document.getElementById('accessToken').value = '';
+            updateConnectionStatus('disconnected');
+            showAlert('Configuration cleared!', 'info');
+            clearResponse();
+        }
 
-    btn.onclick = loadProducts;
-    if (getShop()) loadProducts();
-  </script>
+        function updateConnectionStatus(status) {
+            const indicator = document.getElementById('connectionStatus');
+            indicator.className = 'status-indicator status-' + status;
+        }
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // API call functions
+        async function makeApiCall(endpoint, method = 'GET', data = null) {
+            if (!config.shopDomain || !config.accessToken) {
+                showAlert('Please configure your shop domain and access token first!', 'error');
+                return null;
+            }
+
+            updateConnectionStatus('pending');
+            
+            const url = `https://${config.shopDomain}.myshopify.com${endpoint}`;
+            
+            const options = {
+                method: method,
+                headers: {
+                    'X-Shopify-Access-Token': config.accessToken,
+                    'Content-Type': 'application/json',
+                },
+            };
+
+            if (data && (method === 'POST' || method === 'PUT')) {
+                options.body = JSON.stringify(data);
+            }
+
+            try {
+                const response = await fetch(url, options);
+                const responseData = await response.json();
+                
+                if (response.ok) {
+                    updateConnectionStatus('connected');
+                    displayResponse(responseData, response.status);
+                    return responseData;
+                } else {
+                    updateConnectionStatus('disconnected');
+                    displayResponse(responseData, response.status);
+                    showAlert(`API Error: ${response.status} - ${responseData.errors || 'Unknown error'}`, 'error');
+                    return null;
+                }
+            } catch (error) {
+                updateConnectionStatus('disconnected');
+                displayResponse({ error: error.message }, 'Network Error');
+                showAlert(`Network Error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        function displayResponse(data, status) {
+            const responseArea = document.getElementById('responseArea');
+            const timestamp = new Date().toLocaleString();
+            const statusText = typeof status === 'number' ? `HTTP ${status}` : status;
+            
+            responseArea.textContent = `[${timestamp}] ${statusText}\n\n${JSON.stringify(data, null, 2)}`;
+        }
+
+        function clearResponse() {
+            document.getElementById('responseArea').textContent = 'Response will appear here...';
+        }
+
+        // Test connection
+        async function testConnection() {
+            await makeApiCall(`/admin/api/${config.apiVersion}/shop.json`);
+        }
+
+        // API endpoint functions
+        async function getShopInfo() {
+            await makeApiCall(`/admin/api/${config.apiVersion}/shop.json`);
+        }
+
+        async function getProducts() {
+            await makeApiCall(`/admin/api/${config.apiVersion}/products.json?limit=10`);
+        }
+
+        async function getOrders() {
+            await makeApiCall(`/admin/api/${config.apiVersion}/orders.json?limit=10`);
+        }
+
+        async function getCustomers() {
+            await makeApiCall(`/admin/api/${config.apiVersion}/customers.json?limit=10`);
+        }
+
+        async function getCollections() {
+            await makeApiCall(`/admin/api/${config.apiVersion}/collections.json?limit=10`);
+        }
+
+        async function getInventory() {
+            await makeApiCall(`/admin/api/${config.apiVersion}/inventory_levels.json?limit=10`);
+        }
+
+        async function createProduct() {
+            const productData = {
+                product: {
+                    title: `Test Product ${Date.now()}`,
+                    body_html: '<p>This is a test product created via API</p>',
+                    vendor: 'API Test',
+                    product_type: 'Test',
+                    status: 'draft',
+                    variants: [{
+                        price: '19.99',
+                        inventory_quantity: 100,
+                        inventory_management: 'shopify'
+                    }]
+                }
+            };
+            
+            await makeApiCall(`/admin/api/${config.apiVersion}/products.json`, 'POST', productData);
+        }
+
+        async function callCustomEndpoint() {
+            const endpoint = document.getElementById('customEndpoint').value.trim();
+            if (!endpoint) {
+                showAlert('Please enter a custom endpoint!', 'error');
+                return;
+            }
+            
+            if (!endpoint.startsWith('/admin/api/')) {
+                showAlert('Endpoint should start with /admin/api/', 'error');
+                return;
+            }
+            
+            await makeApiCall(endpoint);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 's':
+                        e.preventDefault();
+                        saveConfig();
+                        break;
+                    case 'Enter':
+                        if (e.target.id === 'customEndpoint') {
+                            e.preventDefault();
+                            callCustomEndpoint();
+                        }
+                        break;
+                }
+            }
+        });
+
+        // Auto-save configuration on input change
+        document.getElementById('shopDomain').addEventListener('input', function() {
+            if (this.value.trim() && document.getElementById('accessToken').value.trim()) {
+                setTimeout(saveConfig, 1000);
+            }
+        });
+
+        document.getElementById('accessToken').addEventListener('input', function() {
+            if (this.value.trim() && document.getElementById('shopDomain').value.trim()) {
+                setTimeout(saveConfig, 1000);
+            }
+        });
+    </script>
 </body>
 </html>
