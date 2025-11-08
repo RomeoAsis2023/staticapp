@@ -9,52 +9,18 @@
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
 </head>
 <body>
-  <button id="open-picker">Open resource picker</button>
-  <button id="list-products" style="margin-left:10px;">List All Products</button>
 
-  <div id="output" style="margin-top:20px; font-family: monospace; white-space: pre-wrap;"></div>
-
-  <script>
-    // === 1. Your original picker (100% unchanged) ===
-    document.getElementById('open-picker').addEventListener('click', async () => {
-      const selected = await shopify.resourcePicker({ type: 'product' });
-      console.log(selected);
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.shopifyProductData) {
+    console.log('Shopify Products:', window.shopifyProductData);
+    
+    // Use the products data
+    window.shopifyProductData.forEach(product => {
+      console.log(`Product: ${product.title}, Price: ${product.price}`);
     });
-
-    // === 2. NEW: List all products using shopify global ===
-    document.getElementById('list-products').addEventListener('click', async () => {
-      const output = document.getElementById('output');
-      output.textContent = 'Loading products...';
-
-      try {
-        // Get session token from App Bridge
-        const token = await shopify.getSessionToken();
-
-        // Fetch all products via Admin API
-        const response = await fetch('/admin/api/2025-01/products.json', {
-          headers: {
-            'X-Shopify-Access-Token': token,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        const data = await response.json();
-        const products = data.products;
-
-        if (!products.length) {
-          output.textContent = 'No products found.';
-          return;
-        }
-
-        // Display products
-        const list = products.map(p => `${p.title} (ID: ${p.id})`).join('\n');
-        output.textContent = `Found ${products.length} products:\n\n${list}`;
-
-      } catch (err) {
-        output.textContent = 'Error: ' + err.message;
-        console.error(err);
-      }
-    });
-  </script>
+  }
+});
+</script>
 </body>
 </html>
