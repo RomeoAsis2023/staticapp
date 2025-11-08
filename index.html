@@ -9,85 +9,25 @@
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
 </head>
 <body>
-  <button id="open-picker">Open resource picker</button>
-  <button id="list-products" style="margin-left:10px;">List All Products</button>
-
-  <div id="output" style="margin-top:20px; font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow: auto; background:#f6f8fa; padding:1rem; border-radius:6px;"></div>
+  
 
   <script>
-    // === 1. YOUR ORIGINAL PICKER (unchanged) ===
-    document.getElementById('open-picker').addEventListener('click', async () => {
-      const selected = await shopify.resourcePicker({ type: 'product' });
-      console.log(selected);
-    });
+  // 1. First request the scopes you need
+const response = await shopify.scopes.request(['read_products', 'write_discounts']);
+console.log('Scope request response:', response);
 
-    // === 2. LIST ALL PRODUCTS (using sessionToken) ===
-    document.getElementById('list-products').addEventListener('click', async () => {
-      const output = document.getElementById('output');
-      output.textContent = 'Loading products...';
+// 2. Then use the appropriate API to fetch products
+const products = await shopify.rest.Product.all({
+  session: session // you need to pass the session
+});
+console.log('Products:', products);
 
-      try {
-        const token = await shopify.sessionToken();
-        const res = await fetch('/admin/api/2025-01/products.json', {
-          headers: { 'X-Shopify-Access-Token': token }
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const { products } = await res.json();
-
-        if (!products?.length) {
-          output.textContent = 'No products found.';
-          return;
-        }
-
-        output.textContent = products.map(p => `${p.title} (ID: ${p.id})`).join('\n');
-      } catch (err) {
-        output.textContent = 'Error: ' + err.message;
-        console.error(err);
-      }
-    });
-
-    // === 3. DYNAMIC SCOPE REQUEST WITH PROPER RESULT HANDLING ===
-    (async () => {
-      if (!window.shopify?.scopes) return;
-
-      const required = [
-        'read_products', 'write_products',
-        'read_metaobject_definitions', 'write_metaobject_definitions',
-        'read_metaobjects', 'write_metaobjects',
-        'read_product_feeds', 'write_product_feeds'
-      ];
-
-      try {
-        const { granted } = await shopify.scopes.query();
-        const missing = required.filter(s => !granted.includes(s));
-
-        if (missing.length === 0) {
-          console.log('All required scopes already granted');
-          return;
-        }
-
-        // Request missing scopes
-        const response = await shopify.scopes.request(missing);
-
-        if (response.result === 'granted-all') {
-          console.log('All scopes granted — you can now use Admin API');
-          // Optional: auto-refresh product list
-          document.getElementById('list-products').click();
-        }
-        else if (response.result === 'declined-all') {
-          document.getElementById('output').textContent = 'Error: You declined required permissions. App cannot list products.';
-          console.warn('Merchant declined all scopes');
-        }
-        else if (response.result === 'granted-some') {
-          console.warn('Only some scopes granted:', response.granted);
-          document.getElementById('output').textContent = 'Warning: Some permissions missing. Full features unavailable.';
-        }
-      } catch (err) {
-        console.error('Scope request failed:', err);
-        document.getElementById('output').textContent = 'Scope error: ' + err.message;
-      }
-    })();
+// Or if you want just the first few products
+const products = await shopify.rest.Product.all({
+  session: session,
+  limit: 10
+});
+console.log('First 10 products:', products);
   </script>
 </body>
 </html>
