@@ -11,23 +11,43 @@
 <body>
   
 
+<button id="fetchProductsBtn">Request Scopes & Fetch Products</button>
+<div id="results"></div>
+
   <script>
-  // 1. First request the scopes you need
-const response = await shopify.scopes.request(['read_products', 'write_discounts']);
-console.log('Scope request response:', response);
+    document.getElementById('fetchProductsBtn').addEventListener('click', async () => {
+  try {
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = 'Processing...';
 
-// 2. Then use the appropriate API to fetch products
-const products = await shopify.rest.Product.all({
-  session: session // you need to pass the session
+    // 1. Request the required scopes
+    const scopeResponse = await shopify.scopes.request(['read_products', 'write_discounts']);
+    console.log('Scope request response:', scopeResponse);
+    
+    // 2. Fetch products after scopes are granted
+    const products = await shopify.rest.Product.all({
+      session: session, // Make sure you have session available
+      limit: 10
+    });
+    
+    console.log('Products:', products);
+    
+    // 3. Display results
+    resultsDiv.innerHTML = `
+      <h3>Success!</h3>
+      <p>Found ${products.data.length} products</p>
+      <ul>
+        ${products.data.map(product => `<li>${product.title}</li>`).join('')}
+      </ul>
+    `;
+    
+  } catch (error) {
+    console.error('Error:', error);
+    document.getElementById('results').innerHTML = `
+      <p style="color: red;">Error: ${error.message}</p>
+    `;
+  }
 });
-console.log('Products:', products);
-
-// Or if you want just the first few products
-const products = await shopify.rest.Product.all({
-  session: session,
-  limit: 10
-});
-console.log('First 10 products:', products);
   </script>
 </body>
 </html>
