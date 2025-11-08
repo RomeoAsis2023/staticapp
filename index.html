@@ -3,609 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StaticAppTest - Shopify Admin API Test</title>
-    <style>
-        :root {
-            --primary-color: #5e8e3e;
-            --secondary-color: #96bf48;
-            --background-color: #f9f9f9;
-            --text-color: #333;
-            --border-color: #ddd;
-            --error-color: #d32f2f;
-            --success-color: #388e3c;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background-color: var(--background-color);
-            color: var(--text-color);
-            line-height: 1.6;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        header {
-            background-color: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 15px 20px;
-            margin-bottom: 30px;
-            border-radius: 8px;
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-        
-        .auth-section {
-            display: flex;
-            gap: 10px;
-        }
-        
-        button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background-color 0.3s;
-        }
-        
-        button:hover {
-            background-color: var(--secondary-color);
-        }
-        
-        button.secondary {
-            background-color: #e0e0e0;
-            color: #333;
-        }
-        
-        button.secondary:hover {
-            background-color: #d0d0d0;
-        }
-        
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        
-        .card {
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            padding: 25px;
-            margin-bottom: 25px;
-        }
-        
-        h1, h2, h3 {
-            margin-bottom: 15px;
-            color: var(--primary-color);
-        }
-        
-        .app-status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #ccc;
-        }
-        
-        .status-indicator.connected {
-            background-color: var(--success-color);
-        }
-        
-        .store-info {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-        
-        .info-item {
-            padding: 15px;
-            background-color: #f5f5f5;
-            border-radius: 6px;
-        }
-        
-        .info-label {
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: #666;
-        }
-        
-        .info-value {
-            font-size: 18px;
-        }
-        
-        .api-section {
-            margin-top: 30px;
-        }
-        
-        .api-actions {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        
-        .api-result {
-            margin-top: 20px;
-            background-color: #f8f9fa;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 15px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: var(--primary-color);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .message {
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-        
-        .error {
-            background-color: #ffebee;
-            color: var(--error-color);
-            border: 1px solid #ffcdd2;
-        }
-        
-        .success {
-            background-color: #e8f5e9;
-            color: var(--success-color);
-            border: 1px solid #c8e6c9;
-        }
-        
-        footer {
-            text-align: center;
-            margin-top: 40px;
-            padding: 20px;
-            color: #666;
-            border-top: 1px solid var(--border-color);
-        }
-    </style>
+    <title>Custom Shopify App</title>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="logo">StaticAppTest</div>
-            <div class="auth-section">
-                <button id="refreshBtn" class="secondary">Refresh Data</button>
-            </div>
-        </div>
-    </header>
-    
-    <div class="container">
-        <div id="appContent">
-            <div class="card">
-                <div class="app-status">
-                    <div id="statusIndicator" class="status-indicator connected"></div>
-                    <h2 id="statusText">App Status: Connected</h2>
-                </div>
-                
-                <div id="storeInfo">
-                    <h3>Store Information</h3>
-                    <div class="store-info">
-                        <div class="info-item">
-                            <div class="info-label">Store Name</div>
-                            <div id="storeName" class="info-value">Loading...</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Store Domain</div>
-                            <div id="storeDomain" class="info-value">Loading...</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Plan</div>
-                            <div id="storePlan" class="info-value">Loading...</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Email</div>
-                            <div id="storeEmail" class="info-value">Loading...</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="message" class="message hidden"></div>
-            </div>
-            
-            <div class="card">
-                <h3>API Test Actions</h3>
-                <p>Test your app's read/write permissions with these API actions:</p>
-                
-                <div class="api-section">
-                    <h4>Products API</h4>
-                    <div class="api-actions">
-                        <button id="getProductsBtn">Get Products</button>
-                        <button id="createProductBtn">Create Test Product</button>
-                    </div>
-                </div>
-                
-                <div class="api-section">
-                    <h4>Metaobjects API</h4>
-                    <div class="api-actions">
-                        <button id="getMetaobjectDefsBtn">Get Metaobject Definitions</button>
-                        <button id="getMetaobjectsBtn">Get Metaobjects</button>
-                    </div>
-                </div>
-                
-                <div class="api-section">
-                    <h4>Product Feeds API</h4>
-                    <div class="api-actions">
-                        <button id="getProductFeedsBtn">Get Product Feeds</button>
-                    </div>
-                </div>
-                
-                <div id="apiResult" class="api-result hidden">
-                    <h4>API Response:</h4>
-                    <pre id="apiResponse"></pre>
-                </div>
-            </div>
-        </div>
-        
-        <div id="loadingScreen" class="loading hidden">
-            <div class="spinner"></div>
-            <p>Loading...</p>
-        </div>
-    </div>
-    
-    <footer>
-        <p>StaticAppTest &copy; 2023 - Shopify Admin API Test</p>
-    </footer>
+    <h1>Welcome to my Custom Shopify App</h1>
 
     <script>
-        // Get URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const host = urlParams.get('host');
-        const shop = urlParams.get('shop');
-        
-        // DOM Elements
-        const appContent = document.getElementById('appContent');
-        const loadingScreen = document.getElementById('loadingScreen');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const statusIndicator = document.getElementById('statusIndicator');
-        const statusText = document.getElementById('statusText');
-        const storeName = document.getElementById('storeName');
-        const storeDomain = document.getElementById('storeDomain');
-        const storePlan = document.getElementById('storePlan');
-        const storeEmail = document.getElementById('storeEmail');
-        const message = document.getElementById('message');
-        const apiResult = document.getElementById('apiResult');
-        const apiResponse = document.getElementById('apiResponse');
-        
-        // API Action Buttons
-        const getProductsBtn = document.getElementById('getProductsBtn');
-        const createProductBtn = document.getElementById('createProductBtn');
-        const getMetaobjectDefsBtn = document.getElementById('getMetaobjectDefsBtn');
-        const getMetaobjectsBtn = document.getElementById('getMetaobjectsBtn');
-        const getProductFeedsBtn = document.getElementById('getProductFeedsBtn');
+        const clientId = 'ef270783ca1996cfb7dad3912f8355a6'; // Replace with your actual Client ID
+        const clientSecret = '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'; // Replace with your actual Client Secret
+        const proxyUrl = 'https://shopify-proxy-romeoasis.meoasis2014.workers.dev/';
 
-        // Initialize the app
-        function initApp() {
-            if (!host || !shop) {
-                showError('Missing required parameters. This app must be run within the Shopify admin.');
-                return;
-            }
-
-            console.log('App initialized with:', { host, shop });
-            
-            // Update UI with shop info
-            storeDomain.textContent = shop;
-            statusText.textContent = `App Status: Connected to ${shop}`;
-
-            // Load initial data
-            fetchShopInfo();
+        function handleInstallation() {
+            const shopDomain = new URLSearchParams(window.location.search).get('shop');
+            // Redirecting to the Shopify OAuth page
+            window.location.href = `https://${shopDomain}/admin/oauth/authorize?client_id=${clientId}&scope=read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_product_feeds,write_product_feeds,read_products,write_products&redirect_uri=${encodeURIComponent(window.location.origin + '/callback')}`;
         }
 
-        // Fetch shop information
-        async function fetchShopInfo() {
-            try {
-                showLoading('Loading store information...');
-                
-                // Use the Shopify Admin API directly
-                const response = await fetch(`/admin/api/2025-10/shop.json`, {
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                console.log('Shop data:', data);
-                
-                // Update UI with shop data
-                storeName.textContent = data.shop.name;
-                storePlan.textContent = data.shop.plan_name || 'N/A';
-                storeEmail.textContent = data.shop.email;
-                
-                showSuccess('Store information loaded successfully');
-                
-            } catch (error) {
-                console.error('Error fetching shop info:', error);
-                showError(`Failed to fetch store information: ${error.message}`);
+        function handleLoad() {
+            if (!localStorage.getItem('accessToken')) {
+                handleInstallation();
+            } else {
+                fetchProducts();
             }
         }
 
-        // API Test Functions
-        async function testGetProducts() {
-            try {
-                showLoading('Fetching products...');
-                
-                const response = await fetch(`/admin/api/2025-10/products.json?limit=5`, {
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-                
-                const data = await response.json();
-                displayApiResult(data, 'Products retrieved successfully');
-                
-            } catch (error) {
-                console.error('Error fetching products:', error);
-                showError(`Failed to fetch products: ${error.message}`);
-            }
+        function fetchProducts() {
+            const accessToken = localStorage.getItem('accessToken');
+            const shopDomain = localStorage.getItem('shopDomain');
+            fetch(`${proxyUrl}?shop=https://${shopDomain}&token=${accessToken}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                // Display or manipulate product data as needed
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         }
 
-        async function testCreateProduct() {
-            try {
-                showLoading('Creating test product...');
-                
-                const productData = {
-                    product: {
-                        title: "Test Product from StaticApp",
-                        body_html: "<p>This is a test product created by StaticAppTest</p>",
-                        vendor: "StaticAppTest",
-                        product_type: "Test",
-                        status: "active",
-                        variants: [
-                            {
-                                price: "19.99",
-                                sku: "TEST-001",
-                                inventory_management: "shopify"
-                            }
-                        ]
-                    }
-                };
-                
-                const response = await fetch(`/admin/api/2025-10/products.json`, {
+        function handleCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const shopDomain = urlParams.get('shop');
+
+            if (code && shopDomain) {
+                fetch(`https://${shopDomain}/admin/oauth/access_token`, {
                     method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(productData)
-                });
-                
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-                
-                const data = await response.json();
-                displayApiResult(data, 'Product created successfully');
-                
-            } catch (error) {
-                console.error('Error creating product:', error);
-                showError(`Failed to create product: ${error.message}`);
-            }
-        }
-
-        async function testGetMetaobjectDefinitions() {
-            try {
-                showLoading('Fetching metaobject definitions...');
-                
-                // Using GraphQL for metaobject definitions
-                const response = await fetch(`/admin/api/2025-10/graphql.json`, {
-                    method: 'POST',
-                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        query: `
-                            {
-                                metaobjectDefinitions(first: 10) {
-                                    edges {
-                                        node {
-                                            id
-                                            type
-                                            fieldDefinitions {
-                                                key
-                                                name
-                                                type {
-                                                    name
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        `
-                    })
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        code: code,
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    localStorage.setItem('accessToken', data.access_token);
+                    localStorage.setItem('shopDomain', shopDomain);
+                    window.location.href = window.location.origin; // Redirect to the main page
+                })
+                .catch(error => {
+                    console.error('Error:', error);
                 });
-                
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-                
-                const data = await response.json();
-                displayApiResult(data, 'Metaobject definitions retrieved');
-                
-            } catch (error) {
-                console.error('Error fetching metaobject definitions:', error);
-                showError(`Failed to fetch metaobject definitions: ${error.message}`);
             }
         }
 
-        async function testGetMetaobjects() {
-            try {
-                showLoading('Fetching metaobjects...');
-                
-                const response = await fetch(`/admin/api/2025-10/graphql.json`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        query: `
-                            {
-                                metaobjects(first: 5, type: ".*") {
-                                    edges {
-                                        node {
-                                            id
-                                            type
-                                            fields {
-                                                key
-                                                value
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        `
-                    })
-                });
-                
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-                
-                const data = await response.json();
-                displayApiResult(data, 'Metaobjects retrieved');
-                
-            } catch (error) {
-                console.error('Error fetching metaobjects:', error);
-                showError(`Failed to fetch metaobjects: ${error.message}`);
-            }
+        if (window.location.pathname === '/callback') {
+            handleCallback();
+        } else {
+            handleLoad();
         }
-
-        async function testGetProductFeeds() {
-            try {
-                showLoading('Fetching product feeds...');
-                
-                const response = await fetch(`/admin/api/2025-10/product_feeds.json`, {
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
-                
-                const data = await response.json();
-                displayApiResult(data, 'Product feeds retrieved');
-                
-            } catch (error) {
-                console.error('Error fetching product feeds:', error);
-                showError(`Failed to fetch product feeds: ${error.message}`);
-            }
-        }
-
-        // Helper Functions
-        function displayApiResult(data, message) {
-            apiResponse.textContent = JSON.stringify(data, null, 2);
-            apiResult.classList.remove('hidden');
-            showSuccess(message);
-        }
-
-        function showLoading(text = 'Loading...') {
-            message.textContent = text;
-            message.className = 'message';
-            message.classList.remove('hidden');
-            loadingScreen.classList.remove('hidden');
-        }
-
-        function hideLoading() {
-            loadingScreen.classList.add('hidden');
-        }
-
-        function showError(errorText) {
-            message.textContent = errorText;
-            message.className = 'message error';
-            message.classList.remove('hidden');
-            hideLoading();
-            
-            setTimeout(() => {
-                message.classList.add('hidden');
-            }, 5000);
-        }
-
-        function showSuccess(successText) {
-            message.textContent = successText;
-            message.className = 'message success';
-            message.classList.remove('hidden');
-            hideLoading();
-            
-            setTimeout(() => {
-                message.classList.add('hidden');
-            }, 3000);
-        }
-
-        // Event Listeners
-        refreshBtn.addEventListener('click', fetchShopInfo);
-        getProductsBtn.addEventListener('click', testGetProducts);
-        createProductBtn.addEventListener('click', testCreateProduct);
-        getMetaobjectDefsBtn.addEventListener('click', testGetMetaobjectDefinitions);
-        getMetaobjectsBtn.addEventListener('click', testGetMetaobjects);
-        getProductFeedsBtn.addEventListener('click', testGetProductFeeds);
-
-        // Initialize the app when the page loads
-        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
