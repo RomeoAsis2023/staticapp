@@ -21,7 +21,7 @@
     resultsDiv.innerHTML = 'Processing...';
 
     // 1. Request the required scopes
-    const scopeResponse = await shopify.scopes.request(['read_products', 'write_discounts']);
+    const scopeResponse = await shopify.scopes.request(['read_products']);
     console.log('Scope request response:', scopeResponse);
     
     // 2. Fetch products after scopes are granted
