@@ -5,97 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StaticAppTest - Shopify Admin API Test</title>
 
-  <!-- 1. REQUIRED: App Bridge -->
+  <!-- REQUIRED: App Bridge (loads shopify global) -->
   <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
 
-  <!-- 2. OPTIONAL: Polaris UI -->
+  <!-- OPTIONAL: Polaris UI -->
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
 
-  <!-- 3. APP CONFIG -->
+  <!-- REQUIRED: Your public API key -->
   <meta name="shopify-api-key" content="ef270783ca1996cfb7dad3912f8355a6" />
-  <script>
-    const SCOPES = 'read_metaobject_definitions,write_metaobject_definitions,' +
-                   'read_metaobjects,write_metaobjects,' +
-                   'read_product_feeds,write_product_feeds,' +
-                   'read_products,write_products';
-    const REDIRECT_URI = location.href.split('?')[0]; // MUST match Partner Dashboard
-  </script>
 </head>
 
 <body>
-  <div style="padding:2rem;">
-    <button id="open-picker" class="Polaris-Button Polaris-Button--primary" disabled>
+  <div style="padding: 2rem;">
+    <button id="open-picker" class="Polaris-Button Polaris-Button--primary">
       Open resource picker
     </button>
-    <pre id="output" style="margin-top:1rem; background:#f6f8fa; padding:1rem; border-radius:6px;"></pre>
+    <pre id="output" style="margin-top:1rem; background:#f6f8fa; padding:1rem; border-radius:6px; font-size:0.9rem;"></pre>
   </div>
 
   <script>
-    (function () {
-      const params = new URLSearchParams(location.search);
-      const shop = params.get('shop');
-      const host = params.get('host');
-
-      // --------------------------------------------------------------
-      // 1. NOT inside Shopify admin → show install UI
-      // --------------------------------------------------------------
-      if (!shop || !host) {
-        document.body.innerHTML = `
-          <div style="text-align:center; margin-top:4rem;">
-            <h2>Install the app</h2>
-            <p>Enter your shop domain:</p>
-            <input id="shop-input" placeholder="mystore.myshopify.com" style="padding:0.5rem; width:300px;"/>
-            <br><br>
-            <button id="install" class="Polaris-Button Polaris-Button--primary">Install</button>
-          </div>`;
-
-        document.getElementById('install').onclick = () => {
-          const input = document.getElementById('shop-input').value.trim();
-          if (!input) return alert('Enter a shop domain');
-          const url = `https://${input}/admin/oauth/authorize?` + new URLSearchParams({
-            client_id: document.querySelector('meta[name="shopify-api-key"]').content,
-            scope: SCOPES,
-            redirect_uri: REDIRECT_URI,
-            state: 'static-app',
-            grant_options: []
-          });
-          location.href = url;
-        };
-        return;
+    // Wait for Shopify to inject `shopify` (happens automatically in embedded admin)
+    const waitForShopify = setInterval(() => {
+      if (window.shopify && typeof window.shopify.resourcePicker === 'function') {
+        clearInterval(waitForShopify);
+        initPicker();
       }
+    }, 50);
 
-      // --------------------------------------------------------------
-      // 2. INSIDE admin → initialise App Bridge
-      // --------------------------------------------------------------
-      const apiKey = document.querySelector('meta[name="shopify-api-key"]').content;
-
-      const app = AppBridge.createApp({
-        apiKey: apiKey,
-        host: host,
-        forceRedirect: true   // will redirect to OAuth if session missing
-      });
-
-      // Wait for App Bridge to be ready
-      app.ready(async () => {
+    function initPicker() {
+      document.getElementById('open-picker').addEventListener('click', async () => {
         try {
-          // Create the resource picker with authenticated session
-          const picker = app.resourcePicker();
-
-          const btn = document.getElementById('open-picker');
-          btn.disabled = false;
-          btn.onclick = async () => {
-            try {
-              const selected = await picker.select({ type: 'product' });
-              document.getElementById('output').textContent = JSON.stringify(selected, null, 2);
-            } catch (e) {
-              document.getElementById('output').textContent = 'Picker error: ' + e.message;
-            }
-          };
+          const selected = await shopify.resourcePicker({ type: 'product' });
+          document.getElementById('output').textContent = JSON.stringify(selected, null, 2);
         } catch (err) {
-          document.getElementById('output').textContent = 'Init error: ' + err.message;
+          document.getElementById('output').textContent = 'Error: ' + err.message;
         }
       });
-    })();
+    }
   </script>
 </body>
 </html>
