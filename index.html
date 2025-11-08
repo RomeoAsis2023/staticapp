@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StaticAppTest - Shopify Admin API Test</title>
+    <meta name="shopify-api-key" content="ef270783ca1996cfb7dad3912f8355a6" />
+  <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
     <style>
         :root {
             --primary-color: #5e8e3e;
@@ -334,6 +336,10 @@
         const getMetaobjectsBtn = document.getElementById('getMetaobjectsBtn');
         const getProductFeedsBtn = document.getElementById('getProductFeedsBtn');
 
+        // Shopify App Bridge instance
+        let app;
+        let utils;
+
         // Initialize the app
         function initApp() {
             if (!host || !shop) {
@@ -343,26 +349,39 @@
 
             console.log('App initialized with:', { host, shop });
             
-            // Update UI with shop info
-            storeDomain.textContent = shop;
-            statusText.textContent = `App Status: Connected to ${shop}`;
+            try {
+                // Initialize Shopify App Bridge
+                app = window.shopifyApp.default({
+                    apiKey: 'ef270783ca1996cfb7dad3912f8355a6', // Your Client ID
+                    host: host,
+                    forceRedirect: true
+                });
 
-            // Load initial data
-            fetchShopInfo();
+                // Initialize App Bridge Utils
+                utils = window.shopifyAppBridgeUtils;
+
+                // Update UI with shop info
+                storeDomain.textContent = shop;
+                statusText.textContent = `App Status: Connected to ${shop}`;
+
+                // Load initial data
+                fetchShopInfo();
+            } catch (error) {
+                console.error('Error initializing App Bridge:', error);
+                showError('Failed to initialize app. Please refresh the page.');
+            }
         }
 
-        // Fetch shop information
+        // Fetch shop information using App Bridge
         async function fetchShopInfo() {
             try {
                 showLoading('Loading store information...');
                 
-                // Use absolute URL to the Shopify store
-                const response = await fetch(`https://${shop}/admin/api/2025-10/shop.json`, {
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
+                // Use App Bridge utils to make authenticated requests
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/shop.json'
+                );
 
                 if (!response.ok) {
                     throw new Error(`API request failed: ${response.status} ${response.statusText}`);
@@ -384,17 +403,15 @@
             }
         }
 
-        // API Test Functions
+        // API Test Functions using App Bridge
         async function testGetProducts() {
             try {
                 showLoading('Fetching products...');
                 
-                const response = await fetch(`https://${shop}/admin/api/2025-10/products.json?limit=5`, {
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/products.json?limit=5'
+                );
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -428,14 +445,17 @@
                     }
                 };
                 
-                const response = await fetch(`https://${shop}/admin/api/2025-10/products.json`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(productData)
-                });
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/products.json',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(productData)
+                    }
+                );
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -452,13 +472,38 @@
             try {
                 showLoading('Fetching metaobject definitions...');
                 
-                // Using REST API for metaobject definitions
-                const response = await fetch(`https://${shop}/admin/api/2025-10/metafields.json?metafield[owner_type]=metaobject_definition&limit=10`, {
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
+                // Using GraphQL for metaobject definitions
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/graphql.json',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            query: `
+                                {
+                                    metaobjectDefinitions(first: 10) {
+                                        edges {
+                                            node {
+                                                id
+                                                type
+                                                fieldDefinitions {
+                                                    key
+                                                    name
+                                                    type {
+                                                        name
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            `
+                        })
                     }
-                });
+                );
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -475,32 +520,34 @@
             try {
                 showLoading('Fetching metaobjects...');
                 
-                // Using GraphQL for metaobjects
-                const response = await fetch(`https://${shop}/admin/api/2025-10/graphql.json`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        query: `
-                            {
-                                metaobjects(first: 5) {
-                                    edges {
-                                        node {
-                                            id
-                                            type
-                                            fields {
-                                                key
-                                                value
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/graphql.json',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            query: `
+                                {
+                                    metaobjects(first: 5) {
+                                        edges {
+                                            node {
+                                                id
+                                                type
+                                                fields {
+                                                    key
+                                                    value
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                        `
-                    })
-                });
+                            `
+                        })
+                    }
+                );
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -517,12 +564,10 @@
             try {
                 showLoading('Fetching product feeds...');
                 
-                const response = await fetch(`https://${shop}/admin/api/2025-10/product_feeds.json`, {
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
+                const response = await utils.fetch(
+                    app,
+                    '/admin/api/2025-10/product_feeds.json'
+                );
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
