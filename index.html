@@ -9,85 +9,81 @@
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
 </head>
 <body>
+  <button id="open-picker">Open resource picker</button>
+  <button id="list-products" style="margin-left:10px;">List All Products</button>
 
-<script>
-// shopify-admin-products.js
+  <div id="output" style="margin-top:20px; font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow: auto; background:#f6f8fa; padding:1rem; border-radius:6px;"></div>
 
-// Method 1: Using window.Shopify global object
-function getProductsFromShopifyAdmin() {
-  // Check if we're in Shopify admin context
-  if (typeof window.Shopify === 'undefined') {
-    console.error('Not in Shopify admin context');
-    return [];
-  }
+  <script>
+    // === 1. YOUR ORIGINAL PICKER (100% unchanged) ===
+    document.getElementById('open-picker').addEventListener('click', async () => {
+      const selected = await shopify.resourcePicker({ type: 'product' });
+      console.log(selected);
+    });
 
-  // For product pages - current product data
-  if (window.product) {
-    console.log('Current product:', window.product);
-    return [window.product];
-  }
+    // === 2. LIST ALL PRODUCTS (uses Admin API) ===
+    document.getElementById('list-products').addEventListener('click', async () => {
+      const output = document.getElementById('output');
+      output.textContent = 'Loading products...';
 
-  // For collection pages - products in the current view
-  if (window.products) {
-    console.log('Products in current view:', window.products);
-    return window.products;
-  }
+      try {
+        const token = await shopify.getSessionToken();
+        const res = await fetch('/admin/api/2025-01/products.json', {
+          headers: { 'X-Shopify-Access-Token': token }
+        });
+        const { products } = await res.json();
+        if (!products?.length) {
+          output.textContent = 'No products found.';
+          return;
+        }
+        output.textContent = products.map(p => `${p.title} (ID: ${p.id})`).join('\n');
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+      }
+    });
 
-  // Using Shopify analytics if available
-  if (window.Shopify.analytics && window.Shopify.analytics.meta) {
-    console.log('Page metadata:', window.Shopify.analytics.meta);
-  }
+    // === 3. DYNAMIC SCOPE REQUEST (only if needed) ===
+    (async () => {
+      if (!window.shopify?.scopes) return;
 
-  return [];
-}
+      const requiredScopes = [
+        'read_products', 'write_products',
+        'read_metaobject_definitions', 'write_metaobject_definitions',
+        'read_metaobjects', 'write_metaobjects',
+        'read_product_feeds', 'write_product_feeds'
+      ];
 
-// Method 2: Listen for Shopify admin events
-function setupShopifyAdminListener() {
-  document.addEventListener('shopify:section:load', function(event) {
-    // When new sections load in theme editor
-    const products = findProductsInDOM(event.target);
-    console.log('Products in new section:', products);
-  });
+      try {
+        const { granted } = await shopify.scopes.query();
+        const missing = requiredScopes.filter(s => !granted.includes(s));
 
-  // Listen for product updates
-  document.addEventListener('shopify:product:update', function(event) {
-    console.log('Product updated:', event.detail);
-  });
-}
+        if (missing.length > 0) {
+          const response = await shopify.scopes.request(missing);
+          if (response.result === 'granted-all') {
+            console.log('All scopes granted');
+          } else {
+            console.warn('Some scopes declined:', response);
+          }
+        }
+      } catch (err) {
+        console.error('Scope check failed:', err);
+      }
+    })();
+  </script>
 
-// Method 3: Extract from Admin UI
-function extractProductsFromAdminUI() {
-  const products = [];
-  
-  // For products list page (/admin/products)
-  const productRows = document.querySelectorAll('[data-admin-products] tr, .product-item');
-  productRows.forEach(row => {
-    const product = extractProductFromRow(row);
-    if (product) products.push(product);
-  });
-  
-  return products;
-}
-
-function extractProductFromRow(row) {
-  try {
-    const titleElement = row.querySelector('.product-title, [data-product-title]');
-    const priceElement = row.querySelector('.product-price, [data-price]');
-    const statusElement = row.querySelector('.product-status, [data-status]');
-    
-    if (titleElement) {
-      return {
-        title: titleElement.textContent.trim(),
-        price: priceElement ? priceElement.textContent.trim() : 'N/A',
-        status: statusElement ? statusElement.textContent.trim() : 'Unknown',
-        element: row
-      };
+  <!-- Install helper (only outside admin) -->
+  <script>
+    if (!location.search.includes('embedded=1')) {
+      const shop = prompt('Enter your shop (e.g. mystore.myshopify.com):');
+      if (shop) {
+        location = `https://${shop}/admin/oauth/authorize?` + new URLSearchParams({
+          client_id: 'ef270783ca1996cfb7dad3912f8355a6',
+          scope: 'read_products,write_products,read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_product_feeds,write_product_feeds',
+          redirect_uri: location.href.split('?')[0],
+          state: 'static'
+        });
+      }
     }
-  } catch (error) {
-    console.error('Error extracting product from row:', error);
-  }
-  return null;
-}
-</script>
+  </script>
 </body>
 </html>
