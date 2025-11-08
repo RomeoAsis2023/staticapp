@@ -4,21 +4,656 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StaticAppTest - Shopify Admin API Test</title>
-
-  <meta name="shopify-api-key" content="ef270783ca1996cfb7dad3912f8355a6" />
+     <meta name="shopify-api-key" content="ef270783ca1996cfb7dad3912f8355a6" />
   <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
-
+    <style>
+        :root {
+            --primary-color: #5e8e3e;
+            --secondary-color: #96bf48;
+            --background-color: #f9f9f9;
+            --text-color: #333;
+            --border-color: #ddd;
+            --error-color: #d32f2f;
+            --success-color: #388e3c;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        button.secondary {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+        
+        button.secondary:hover {
+            background-color: #d0d0d0;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        
+        h1, h2, h3 {
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+        
+        .api-section {
+            margin-top: 30px;
+        }
+        
+        .api-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .api-result {
+            margin-top: 20px;
+            background-color: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .error {
+            background-color: #ffebee;
+            color: var(--error-color);
+            border: 1px solid #ffcdd2;
+        }
+        
+        .success {
+            background-color: #e8f5e9;
+            color: var(--success-color);
+            border: 1px solid #c8e6c9;
+        }
+        
+        .resource-picker-section {
+            background: #f0f7ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            border-top: 1px solid var(--border-color);
+        }
+    </style>
 </head>
 <body>
-    <button id="open-picker">Open resource picker</button>
-  <script>
-    document
-      .getElementById('open-picker')
-      .addEventListener('click', async () => {
-        const selected = await shopify.resourcePicker({type: 'product'});
-        console.log(selected);
-      });
-  </script>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="logo">StaticAppTest</div>
+                <div>App Bridge is Working! ✅</div>
+            </div>
+        </header>
+
+        <div class="card">
+            <h2>Resource Picker</h2>
+            <div class="resource-picker-section">
+                <button id="open-product-picker">Open Product Picker</button>
+                <button id="open-collection-picker">Open Collection Picker</button>
+                <div id="picker-result" class="api-result hidden">
+                    <h4>Picker Result:</h4>
+                    <pre id="pickerResponse"></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>API Test Actions</h2>
+            <p>Test your app's read/write permissions with these API actions:</p>
+            
+            <div class="api-section">
+                <h3>Products API (read_products, write_products)</h3>
+                <div class="api-actions">
+                    <button id="getProductsBtn">Get Products</button>
+                    <button id="createProductBtn">Create Test Product</button>
+                    <button id="updateProductBtn">Update Product</button>
+                    <button id="getProductCountBtn">Get Product Count</button>
+                </div>
+            </div>
+            
+            <div class="api-section">
+                <h3>Metaobjects API (read_metaobjects, write_metaobjects)</h3>
+                <div class="api-actions">
+                    <button id="getMetaobjectsBtn">Get Metaobjects</button>
+                    <button id="createMetaobjectBtn">Create Metaobject</button>
+                    <button id="getMetaobjectDefinitionsBtn">Get Definitions</button>
+                </div>
+            </div>
+            
+            <div class="api-section">
+                <h3>Product Feeds API (read_product_feeds, write_product_feeds)</h3>
+                <div class="api-actions">
+                    <button id="getProductFeedsBtn">Get Product Feeds</button>
+                    <button id="createProductFeedBtn">Create Product Feed</button>
+                </div>
+            </div>
+            
+            <div class="api-section">
+                <h3>Shop & General Data</h3>
+                <div class="api-actions">
+                    <button id="getShopInfoBtn">Get Shop Info</button>
+                    <button id="getCollectionsBtn">Get Collections</button>
+                    <button id="getCustomersBtn">Get Customers</button>
+                </div>
+            </div>
+            
+            <div id="apiResult" class="api-result hidden">
+                <h4>API Response:</h4>
+                <pre id="apiResponse"></pre>
+            </div>
+        </div>
+        
+        <div id="loadingScreen" class="loading hidden">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+    </div>
+    
+    <footer>
+        <p>StaticAppTest &copy; 2023 - Shopify Admin API Test</p>
+    </footer>
+
+    <script>
+        // Initialize Shopify App Bridge
+        const urlParams = new URLSearchParams(window.location.search);
+        const host = urlParams.get('host');
+        
+        if (!host) {
+            document.body.innerHTML = '<div class="error">Missing host parameter. This app must be run within Shopify admin.</div>';
+            throw new Error('Missing host parameter');
+        }
+
+        // Initialize App Bridge
+        const app = window.shopifyApp.createApp({
+            apiKey: 'ef270783ca1996cfb7dad3912f8355a6',
+            host: host
+        });
+
+        // DOM Elements
+        const loadingScreen = document.getElementById('loadingScreen');
+        const apiResult = document.getElementById('apiResult');
+        const apiResponse = document.getElementById('apiResponse');
+        const pickerResult = document.getElementById('picker-result');
+        const pickerResponse = document.getElementById('pickerResponse');
+
+        // Make authenticated API calls using App Bridge
+        async function makeAPICall(endpoint, options = {}) {
+            try {
+                const response = await window.shopifyApp.authenticatedFetch(
+                    app,
+                    endpoint,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...options.headers
+                        },
+                        method: options.method || 'GET',
+                        body: options.body
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('API call failed:', error);
+                throw error;
+            }
+        }
+
+        // Resource Picker Functions
+        document.getElementById('open-product-picker').addEventListener('click', async () => {
+            try {
+                const selected = await window.shopifyApp.resourcePicker({
+                    type: 'product',
+                    action: 'select',
+                    multiple: true
+                });
+                
+                if (selected) {
+                    pickerResponse.textContent = JSON.stringify(selected, null, 2);
+                    pickerResult.classList.remove('hidden');
+                    showSuccess('Product picker completed');
+                }
+            } catch (error) {
+                console.error('Picker error:', error);
+                showError(`Picker failed: ${error.message}`);
+            }
+        });
+
+        document.getElementById('open-collection-picker').addEventListener('click', async () => {
+            try {
+                const selected = await window.shopifyApp.resourcePicker({
+                    type: 'collection',
+                    action: 'select',
+                    multiple: true
+                });
+                
+                if (selected) {
+                    pickerResponse.textContent = JSON.stringify(selected, null, 2);
+                    pickerResult.classList.remove('hidden');
+                    showSuccess('Collection picker completed');
+                }
+            } catch (error) {
+                console.error('Picker error:', error);
+                showError(`Picker failed: ${error.message}`);
+            }
+        });
+
+        // PRODUCTS API FUNCTIONS
+        document.getElementById('getProductsBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Fetching products...');
+                const data = await makeAPICall('/admin/api/2025-10/products.json?limit=5');
+                displayApiResult(data, 'Products retrieved successfully');
+            } catch (error) {
+                showError(`Failed to fetch products: ${error.message}`);
+            }
+        });
+
+        document.getElementById('createProductBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Creating test product...');
+                
+                const productData = {
+                    product: {
+                        title: "Test Product from StaticApp - " + Date.now(),
+                        body_html: "<p>This is a test product created by StaticAppTest</p>",
+                        vendor: "StaticAppTest",
+                        product_type: "Test",
+                        status: "active",
+                        variants: [
+                            {
+                                price: "19.99",
+                                sku: "TEST-" + Date.now(),
+                                inventory_management: "shopify"
+                            }
+                        ]
+                    }
+                };
+                
+                const data = await makeAPICall('/admin/api/2025-10/products.json', {
+                    method: 'POST',
+                    body: JSON.stringify(productData)
+                });
+                
+                displayApiResult(data, 'Product created successfully');
+            } catch (error) {
+                showError(`Failed to create product: ${error.message}`);
+            }
+        });
+
+        document.getElementById('updateProductBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Fetching products to update...');
+                
+                // First get a product to update
+                const products = await makeAPICall('/admin/api/2025-10/products.json?limit=1');
+                
+                if (products.products.length === 0) {
+                    showError('No products found to update. Create a product first.');
+                    return;
+                }
+                
+                const product = products.products[0];
+                const updateData = {
+                    product: {
+                        id: product.id,
+                        body_html: `<p>Updated by StaticAppTest on ${new Date().toLocaleString()}</p>`
+                    }
+                };
+                
+                const data = await makeAPICall(`/admin/api/2025-10/products/${product.id}.json`, {
+                    method: 'PUT',
+                    body: JSON.stringify(updateData)
+                });
+                
+                displayApiResult(data, 'Product updated successfully');
+            } catch (error) {
+                showError(`Failed to update product: ${error.message}`);
+            }
+        });
+
+        document.getElementById('getProductCountBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Getting product count...');
+                const data = await makeAPICall('/admin/api/2025-10/products/count.json');
+                displayApiResult(data, 'Product count retrieved');
+            } catch (error) {
+                showError(`Failed to get product count: ${error.message}`);
+            }
+        });
+
+        // METAOBJECTS API FUNCTIONS
+        document.getElementById('getMetaobjectsBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Fetching metaobjects...');
+                
+                const graphqlQuery = {
+                    query: `{
+                        metaobjects(first: 10) {
+                            edges {
+                                node {
+                                    id
+                                    type
+                                    fields {
+                                        key
+                                        value
+                                    }
+                                    createdAt
+                                }
+                            }
+                        }
+                    }`
+                };
+                
+                const data = await makeAPICall('/admin/api/2025-10/graphql.json', {
+                    method: 'POST',
+                    body: JSON.stringify(graphqlQuery)
+                });
+                
+                displayApiResult(data, 'Metaobjects retrieved');
+            } catch (error) {
+                showError(`Failed to fetch metaobjects: ${error.message}`);
+            }
+        });
+
+        document.getElementById('createMetaobjectBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Creating metaobject...');
+                
+                // First, let's check what metaobject definitions exist
+                const graphqlQuery = {
+                    query: `{
+                        metaobjectDefinitions(first: 5) {
+                            edges {
+                                node {
+                                    type
+                                    fieldDefinitions {
+                                        key
+                                        name
+                                    }
+                                }
+                            }
+                        }
+                    }`
+                };
+                
+                const definitions = await makeAPICall('/admin/api/2025-10/graphql.json', {
+                    method: 'POST',
+                    body: JSON.stringify(graphqlQuery)
+                });
+                
+                displayApiResult(definitions, 'Metaobject definitions retrieved. Check console for available types.');
+                console.log('Available metaobject definitions:', definitions);
+                
+            } catch (error) {
+                showError(`Failed to create metaobject: ${error.message}`);
+            }
+        });
+
+        document.getElementById('getMetaobjectDefinitionsBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Fetching metaobject definitions...');
+                
+                const graphqlQuery = {
+                    query: `{
+                        metaobjectDefinitions(first: 10) {
+                            edges {
+                                node {
+                                    type
+                                    fieldDefinitions {
+                                        key
+                                        name
+                                        type {
+                                            name
+                                        }
+                                    }
+                                    access {
+                                        storefront
+                                        admin
+                                    }
+                                }
+                            }
+                        }
+                    }`
+                };
+                
+                const data = await makeAPICall('/admin/api/2025-10/graphql.json', {
+                    method: 'POST',
+                    body: JSON.stringify(graphqlQuery)
+                });
+                
+                displayApiResult(data, 'Metaobject definitions retrieved');
+            } catch (error) {
+                showError(`Failed to fetch metaobject definitions: ${error.message}`);
+            }
+        });
+
+        // PRODUCT FEEDS API FUNCTIONS
+        document.getElementById('getProductFeedsBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Fetching product feeds...');
+                const data = await makeAPICall('/admin/api/2025-10/product_feeds.json');
+                displayApiResult(data, 'Product feeds retrieved');
+            } catch (error) {
+                showError(`Failed to fetch product feeds: ${error.message}`);
+            }
+        });
+
+        document.getElementById('createProductFeedBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Creating product feed...');
+                
+                const feedData = {
+                    product_feed: {
+                        name: "Test Feed " + Date.now(),
+                        url: "https://example.com/feed.xml",
+                        format: "xml"
+                    }
+                };
+                
+                const data = await makeAPICall('/admin/api/2025-10/product_feeds.json', {
+                    method: 'POST',
+                    body: JSON.stringify(feedData)
+                });
+                
+                displayApiResult(data, 'Product feed created successfully');
+            } catch (error) {
+                showError(`Failed to create product feed: ${error.message}`);
+            }
+        });
+
+        // GENERAL SHOP DATA
+        document.getElementById('getShopInfoBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Fetching shop information...');
+                const data = await makeAPICall('/admin/api/2025-10/shop.json');
+                displayApiResult(data, 'Shop information retrieved');
+            } catch (error) {
+                showError(`Failed to fetch shop info: ${error.message}`);
+            }
+        });
+
+        document.getElementById('getCollectionsBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Fetching collections...');
+                const data = await makeAPICall('/admin/api/2025-10/custom_collections.json?limit=5');
+                displayApiResult(data, 'Collections retrieved');
+            } catch (error) {
+                showError(`Failed to fetch collections: ${error.message}`);
+            }
+        });
+
+        document.getElementById('getCustomersBtn').addEventListener('click', async () => {
+            try {
+                showLoading('Fetching customers...');
+                const data = await makeAPICall('/admin/api/2025-10/customers.json?limit=5');
+                displayApiResult(data, 'Customers retrieved');
+            } catch (error) {
+                showError(`Failed to fetch customers: ${error.message}`);
+            }
+        });
+
+        // HELPER FUNCTIONS
+        function displayApiResult(data, message) {
+            apiResponse.textContent = JSON.stringify(data, null, 2);
+            apiResult.classList.remove('hidden');
+            showSuccess(message);
+        }
+
+        function showLoading(text = 'Loading...') {
+            const existingMessage = document.querySelector('.message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            loadingScreen.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loadingScreen.classList.add('hidden');
+        }
+
+        function showError(errorText) {
+            hideLoading();
+            const message = document.createElement('div');
+            message.className = 'message error';
+            message.textContent = errorText;
+            document.querySelector('.container').prepend(message);
+            
+            setTimeout(() => {
+                message.remove();
+            }, 5000);
+        }
+
+        function showSuccess(successText) {
+            hideLoading();
+            const message = document.createElement('div');
+            message.className = 'message success';
+            message.textContent = successText;
+            document.querySelector('.container').prepend(message);
+            
+            setTimeout(() => {
+                message.remove();
+            }, 3000);
+        }
+
+        // Show success message when app loads
+        document.addEventListener('DOMContentLoaded', () => {
+            showSuccess('App Bridge initialized successfully! You can now test all API functions.');
+        });
+    </script>
 </body>
 </html>
