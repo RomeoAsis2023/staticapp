@@ -15,38 +15,46 @@
   <div id="output" style="margin-top:20px; font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow: auto; background:#f6f8fa; padding:1rem; border-radius:6px;"></div>
 
   <script>
-    // === 1. YOUR ORIGINAL PICKER (100% unchanged) ===
+    // === 1. YOUR ORIGINAL PICKER (unchanged) ===
     document.getElementById('open-picker').addEventListener('click', async () => {
       const selected = await shopify.resourcePicker({ type: 'product' });
       console.log(selected);
     });
 
-    // === 2. LIST ALL PRODUCTS (uses Admin API) ===
+    // === 2. LIST ALL PRODUCTS (FIXED: sessionToken()) ===
     document.getElementById('list-products').addEventListener('click', async () => {
       const output = document.getElementById('output');
       output.textContent = 'Loading products...';
 
       try {
-        const token = await shopify.getSessionToken();
+        // CORRECT: shopify.sessionToken()
+        const token = await shopify.sessionToken();
+
         const res = await fetch('/admin/api/2025-01/products.json', {
           headers: { 'X-Shopify-Access-Token': token }
         });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const { products } = await res.json();
+
         if (!products?.length) {
           output.textContent = 'No products found.';
           return;
         }
+
         output.textContent = products.map(p => `${p.title} (ID: ${p.id})`).join('\n');
       } catch (err) {
         output.textContent = 'Error: ' + err.message;
+        console.error(err);
       }
     });
 
-    // === 3. DYNAMIC SCOPE REQUEST (only if needed) ===
+    // === 3. DYNAMIC SCOPE REQUEST (official API) ===
     (async () => {
       if (!window.shopify?.scopes) return;
 
-      const requiredScopes = [
+      const required = [
         'read_products', 'write_products',
         'read_metaobject_definitions', 'write_metaobject_definitions',
         'read_metaobjects', 'write_metaobjects',
@@ -55,18 +63,16 @@
 
       try {
         const { granted } = await shopify.scopes.query();
-        const missing = requiredScopes.filter(s => !granted.includes(s));
+        const missing = required.filter(s => !granted.includes(s));
 
         if (missing.length > 0) {
           const response = await shopify.scopes.request(missing);
-          if (response.result === 'granted-all') {
-            console.log('All scopes granted');
-          } else {
+          if (response.result !== 'granted-all') {
             console.warn('Some scopes declined:', response);
           }
         }
       } catch (err) {
-        console.error('Scope check failed:', err);
+        console.error('Scope request failed:', err);
       }
     })();
   </script>
