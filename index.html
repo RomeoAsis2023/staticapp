@@ -1,24 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StaticAppTest - Shopify Admin API Test</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metaobject / Product Picker</title>
 
-  <meta name="shopify-api-key" content="ef270783ca1996cfb7dad3912f8355a6" />
+  <!-- ---- 1. Shopify App Bridge (must be first) ---- -->
   <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+
+  <!-- ---- 2. Polaris UI (optional, but nice) ---- -->
   <script src="https://cdn.shopify.com/shopifycloud/polaris.js"></script>
 
-</head>
-<body>
-    <button id="open-picker">Open resource picker</button>
+  <!-- ---- 3. App-Bridge Web-Component (auto-creates <shopify-app-bridge>) ---- -->
   <script>
-    document
-      .getElementById('open-picker')
-      .addEventListener('click', async () => {
-        const selected = await shopify.resourcePicker({type: 'product'});
-        console.log(selected);
+
+    const API_KEY = 'ef270783ca1996cfb7dad3912f8355a6';   
+    const SCOPES  = 'read_metaobject_definitions,write_metaobject_definitions,' +
+                    'read_metaobjects,write_metaobjects,' +
+                    'read_product_feeds,write_product_feeds,' +
+                    'read_products,write_products';
+    const HOST    = location.host;                     
+
+  </script>
+</head>
+
+<body>
+  <div style="padding:2rem;">
+    <h2>Shopify Resource Picker (pure HTML)</h2>
+    <button id="open-picker" class="Polaris-Button Polaris-Button--primary">
+      Open Product Picker
+    </button>
+    <pre id="output" style="margin-top:1rem; white-space:pre-wrap;"></pre>
+  </div>
+
+  <!-- --------------------------------------------------------------- -->
+  <script>
+
+    async function getSessionToken() {
+
+      const app = ShopifyApp.init({
+        apiKey: API_KEY,
+        host: new URLSearchParams(location.search).get('host') || '',
+        forceRedirect: true
       });
+
+      return new Promise((resolve) => {
+        app.ready(() => {
+          resolve(app.getSessionToken());
+        });
+      });
+    }
+
+    async function initPicker() {
+      const token = await getSessionToken();
+
+      window.shopify = ShopifyApp.resourcePicker;
+
+      window.AUTH_HEADER = `Bearer ${token}`;
+    }
+
+    document.getElementById('open-picker').addEventListener('click', async () => {
+      try {
+        const selected = await shopify.resourcePicker({ type: 'product' });
+        document.getElementById('output').textContent = JSON.stringify(selected, null, 2);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('output').textContent = 'Error: ' + err.message;
+      }
+    });
+
+    (async () => {
+
+      const params = new URLSearchParams(location.search);
+      if (params.has('shop') && params.has('host')) {
+        await initPicker();
+      } else {
+
+        const installUrl = `https:
+          new URLSearchParams({
+            client_id: API_KEY,
+            scope: SCOPES,
+            redirect_uri: location.href.split('?')[0], 
+            state: 'static-app',
+            grant_options: []
+          });
+
+        document.body.innerHTML = `
+          <div style="padding:2rem;text-align:center;">
+            <h2>Install the app on your store</h2>
+            <a href="${installUrl}" class="Polaris-Button Polaris-Button--primary">
+              Install App
+            </a>
+          </div>`;
+      }
+    })();
   </script>
 </body>
 </html>
