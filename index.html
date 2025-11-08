@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StaticAppTest - Shopify Admin API Test</title>
-    <script src="https://unpkg.com/@shopify/app-bridge@3"></script>
-    <script src="https://unpkg.com/@shopify/app-bridge-utils@3"></script>
     <style>
         :root {
             --primary-color: #5e8e3e;
@@ -213,22 +211,6 @@
             border: 1px solid #c8e6c9;
         }
         
-        .instructions {
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #f0f7ff;
-            border-radius: 8px;
-        }
-        
-        .scope-list {
-            margin: 10px 0;
-            padding-left: 20px;
-        }
-        
-        .scope-list li {
-            margin-bottom: 5px;
-        }
-        
         footer {
             text-align: center;
             margin-top: 40px;
@@ -290,7 +272,6 @@
                     <div class="api-actions">
                         <button id="getProductsBtn">Get Products</button>
                         <button id="createProductBtn">Create Test Product</button>
-                        <button id="updateProductBtn" disabled>Update Product</button>
                     </div>
                 </div>
                 
@@ -298,7 +279,6 @@
                     <h4>Metaobjects API</h4>
                     <div class="api-actions">
                         <button id="getMetaobjectDefsBtn">Get Metaobject Definitions</button>
-                        <button id="createMetaobjectDefBtn" disabled>Create Metaobject Definition</button>
                         <button id="getMetaobjectsBtn">Get Metaobjects</button>
                     </div>
                 </div>
@@ -307,7 +287,6 @@
                     <h4>Product Feeds API</h4>
                     <div class="api-actions">
                         <button id="getProductFeedsBtn">Get Product Feeds</button>
-                        <button id="createProductFeedBtn" disabled>Create Product Feed</button>
                     </div>
                 </div>
                 
@@ -329,9 +308,10 @@
     </footer>
 
     <script>
-        // Shopify App Bridge configuration
-        let app;
-        let utils;
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const host = urlParams.get('host');
+        const shop = urlParams.get('shop');
         
         // DOM Elements
         const appContent = document.getElementById('appContent');
@@ -354,32 +334,18 @@
         const getMetaobjectsBtn = document.getElementById('getMetaobjectsBtn');
         const getProductFeedsBtn = document.getElementById('getProductFeedsBtn');
 
-        // Initialize Shopify App Bridge
-        function initShopifyApp() {
-            // Get parameters from URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const host = urlParams.get('host');
-            const shop = urlParams.get('shop');
-
-            if (!host) {
-                showError('Missing host parameter. This app must be run within the Shopify admin.');
+        // Initialize the app
+        function initApp() {
+            if (!host || !shop) {
+                showError('Missing required parameters. This app must be run within the Shopify admin.');
                 return;
             }
 
-            // Initialize App Bridge
-            app = window.shopifyApp.default({
-                apiKey: 'ef270783ca1996cfb7dad3912f8355a6', // Replace with your Client ID
-                host: host,
-                forceRedirect: true
-            });
-
-            utils = window.shopifyAppBridgeUtils;
-
+            console.log('App initialized with:', { host, shop });
+            
             // Update UI with shop info
-            if (shop) {
-                storeDomain.textContent = shop;
-                statusText.textContent = `App Status: Connected to ${shop}`;
-            }
+            storeDomain.textContent = shop;
+            statusText.textContent = `App Status: Connected to ${shop}`;
 
             // Load initial data
             fetchShopInfo();
@@ -390,17 +356,20 @@
             try {
                 showLoading('Loading store information...');
                 
-                // Use App Bridge to make authenticated requests
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/shop.json'
-                );
+                // Use the Shopify Admin API directly
+                const response = await fetch(`/admin/api/2025-10/shop.json`, {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
 
                 if (!response.ok) {
                     throw new Error(`API request failed: ${response.status} ${response.statusText}`);
                 }
 
                 const data = await response.json();
+                console.log('Shop data:', data);
                 
                 // Update UI with shop data
                 storeName.textContent = data.shop.name;
@@ -420,10 +389,12 @@
             try {
                 showLoading('Fetching products...');
                 
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/products.json?limit=5'
-                );
+                const response = await fetch(`/admin/api/2025-10/products.json?limit=5`, {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -457,17 +428,14 @@
                     }
                 };
                 
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/products.json',
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(productData)
-                    }
-                );
+                const response = await fetch(`/admin/api/2025-10/products.json`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(productData)
+                });
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -484,10 +452,35 @@
             try {
                 showLoading('Fetching metaobject definitions...');
                 
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/metafields.json?metafield[owner_type]=metaobject_definition&limit=10'
-                );
+                // Using GraphQL for metaobject definitions
+                const response = await fetch(`/admin/api/2025-10/graphql.json`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: `
+                            {
+                                metaobjectDefinitions(first: 10) {
+                                    edges {
+                                        node {
+                                            id
+                                            type
+                                            fieldDefinitions {
+                                                key
+                                                name
+                                                type {
+                                                    name
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        `
+                    })
+                });
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -504,34 +497,31 @@
             try {
                 showLoading('Fetching metaobjects...');
                 
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/graphql.json',
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            query: `
-                                query {
-                                    metaobjects(first: 5, type: ".*") {
-                                        edges {
-                                            node {
-                                                id
-                                                type
-                                                fields {
-                                                    key
-                                                    value
-                                                }
+                const response = await fetch(`/admin/api/2025-10/graphql.json`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: `
+                            {
+                                metaobjects(first: 5, type: ".*") {
+                                    edges {
+                                        node {
+                                            id
+                                            type
+                                            fields {
+                                                key
+                                                value
                                             }
                                         }
                                     }
                                 }
-                            `
-                        })
-                    }
-                );
+                            }
+                        `
+                    })
+                });
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -548,10 +538,12 @@
             try {
                 showLoading('Fetching product feeds...');
                 
-                const response = await utils.fetch(
-                    app,
-                    '/admin/api/2025-10/product_feeds.json'
-                );
+                const response = await fetch(`/admin/api/2025-10/product_feeds.json`, {
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
                 
                 if (!response.ok) throw new Error(`API error: ${response.status}`);
                 
@@ -613,7 +605,7 @@
         getProductFeedsBtn.addEventListener('click', testGetProductFeeds);
 
         // Initialize the app when the page loads
-        document.addEventListener('DOMContentLoaded', initShopifyApp);
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
