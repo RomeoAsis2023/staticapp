@@ -21,21 +21,18 @@
       console.log(selected);
     });
 
-    // === 2. LIST ALL PRODUCTS (FIXED: sessionToken()) ===
+    // === 2. LIST ALL PRODUCTS (using sessionToken) ===
     document.getElementById('list-products').addEventListener('click', async () => {
       const output = document.getElementById('output');
       output.textContent = 'Loading products...';
 
       try {
-        // CORRECT: shopify.sessionToken()
         const token = await shopify.sessionToken();
-
         const res = await fetch('/admin/api/2025-01/products.json', {
           headers: { 'X-Shopify-Access-Token': token }
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
         const { products } = await res.json();
 
         if (!products?.length) {
@@ -50,7 +47,7 @@
       }
     });
 
-    // === 3. DYNAMIC SCOPE REQUEST (official API) ===
+    // === 3. DYNAMIC SCOPE REQUEST WITH PROPER RESULT HANDLING ===
     (async () => {
       if (!window.shopify?.scopes) return;
 
@@ -65,31 +62,32 @@
         const { granted } = await shopify.scopes.query();
         const missing = required.filter(s => !granted.includes(s));
 
-        if (missing.length > 0) {
-          const response = await shopify.scopes.request(missing);
-          if (response.result !== 'granted-all') {
-            console.warn('Some scopes declined:', response);
-          }
+        if (missing.length === 0) {
+          console.log('All required scopes already granted');
+          return;
+        }
+
+        // Request missing scopes
+        const response = await shopify.scopes.request(missing);
+
+        if (response.result === 'granted-all') {
+          console.log('All scopes granted — you can now use Admin API');
+          // Optional: auto-refresh product list
+          document.getElementById('list-products').click();
+        }
+        else if (response.result === 'declined-all') {
+          document.getElementById('output').textContent = 'Error: You declined required permissions. App cannot list products.';
+          console.warn('Merchant declined all scopes');
+        }
+        else if (response.result === 'granted-some') {
+          console.warn('Only some scopes granted:', response.granted);
+          document.getElementById('output').textContent = 'Warning: Some permissions missing. Full features unavailable.';
         }
       } catch (err) {
         console.error('Scope request failed:', err);
+        document.getElementById('output').textContent = 'Scope error: ' + err.message;
       }
     })();
-  </script>
-
-  <!-- Install helper (only outside admin) -->
-  <script>
-    if (!location.search.includes('embedded=1')) {
-      const shop = prompt('Enter your shop (e.g. mystore.myshopify.com):');
-      if (shop) {
-        location = `https://${shop}/admin/oauth/authorize?` + new URLSearchParams({
-          client_id: 'ef270783ca1996cfb7dad3912f8355a6',
-          scope: 'read_products,write_products,read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_product_feeds,write_product_feeds',
-          redirect_uri: location.href.split('?')[0],
-          state: 'static'
-        });
-      }
-    }
   </script>
 </body>
 </html>
