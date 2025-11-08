@@ -1,0 +1,13 @@
+# shopify.extension.toml
+name = "Custom Text Field"
+description = "Adds a custom text field to products"
+type = "product_metafield"
+
+[metafields.product]
+namespace = "custom"
+key = "engraving_text"
+name = "Engraving Text"
+description = "Text to engrave on the product"
+type = "single_line_text_field"
+
+
