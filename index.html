@@ -10,30 +10,51 @@
 </head>
 <body>
   <button id="open-picker">Open resource picker</button>
+  <button id="list-products" style="margin-left:10px;">List All Products</button>
+
+  <div id="output" style="margin-top:20px; font-family: monospace; white-space: pre-wrap;"></div>
 
   <script>
+    // === 1. Your original picker (100% unchanged) ===
     document.getElementById('open-picker').addEventListener('click', async () => {
-      const selected = await shopify.resourcePicker({type: 'product'});
+      const selected = await shopify.resourcePicker({ type: 'product' });
       console.log(selected);
     });
-  </script>
 
-  <!-- ONLY RUNS IF NOT INSIDE ADMIN (install helper) -->
-  <script>
-    // Only run if NOT embedded (no ?embedded=1 or missing shop/host)
-    if (!location.search.includes('embedded=1') && !location.search.includes('shop=')) {
-      const shop = prompt('Enter your shop domain (e.g. mystore.myshopify.com):');
-      if (shop) {
-        const scopes = 'read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_product_feeds,write_product_feeds,read_products,write_products';
-        const url = `https://${shop}/admin/oauth/authorize?` + new URLSearchParams({
-          client_id: 'ef270783ca1996cfb7dad3912f8355a6',
-          scope: scopes,
-          redirect_uri: location.href.split('?')[0],
-          state: 'static'
+    // === 2. NEW: List all products using shopify global ===
+    document.getElementById('list-products').addEventListener('click', async () => {
+      const output = document.getElementById('output');
+      output.textContent = 'Loading products...';
+
+      try {
+        // Get session token from App Bridge
+        const token = await shopify.getSessionToken();
+
+        // Fetch all products via Admin API
+        const response = await fetch('/admin/api/2025-01/products.json', {
+          headers: {
+            'X-Shopify-Access-Token': token,
+            'Content-Type': 'application/json'
+          }
         });
-        location = url;
+
+        const data = await response.json();
+        const products = data.products;
+
+        if (!products.length) {
+          output.textContent = 'No products found.';
+          return;
+        }
+
+        // Display products
+        const list = products.map(p => `${p.title} (ID: ${p.id})`).join('\n');
+        output.textContent = `Found ${products.length} products:\n\n${list}`;
+
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+        console.error(err);
       }
-    }
+    });
   </script>
 </body>
 </html>
