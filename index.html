@@ -10,6 +10,7 @@
 </head>
 <body>
   <button id="open-picker">Open resource picker</button>
+
   <script>
     document.getElementById('open-picker').addEventListener('click', async () => {
       const selected = await shopify.resourcePicker({type: 'product'});
@@ -17,33 +18,22 @@
     });
   </script>
 
-  <!-- ==== AUTO-INSTALL WITH FULL SCOPES (runs only once) ==== -->
+  <!-- ONLY RUNS IF NOT INSIDE ADMIN (install helper) -->
   <script>
-    (function() {
-      const params = new URLSearchParams(location.search);
-      if (params.has('shop') && !params.has('code')) {
-        // Already installed? Do nothing.
-        return;
-      }
-      if (!params.has('shop')) {
-        // Not in admin → show install prompt
-        const shop = prompt('Enter your shop (e.g. mystore.myshopify.com):');
-        if (!shop) return;
-        const scopes = 'read_metaobject_definitions,write_metaobject_definitions,' +
-                       'read_metaobjects,write_metaobjects,' +
-                       'read_product_feeds,write_product_feeds,' +
-                       'read_products,write_products';
-        const redirectUri = location.href.split('?')[0];
-        const authUrl = `https://${shop}/admin/oauth/authorize?` + new URLSearchParams({
+    // Only run if NOT embedded (no ?embedded=1 or missing shop/host)
+    if (!location.search.includes('embedded=1') && !location.search.includes('shop=')) {
+      const shop = prompt('Enter your shop domain (e.g. mystore.myshopify.com):');
+      if (shop) {
+        const scopes = 'read_metaobject_definitions,write_metaobject_definitions,read_metaobjects,write_metaobjects,read_product_feeds,write_product_feeds,read_products,write_products';
+        const url = `https://${shop}/admin/oauth/authorize?` + new URLSearchParams({
           client_id: 'ef270783ca1996cfb7dad3912f8355a6',
           scope: scopes,
-          redirect_uri: redirectUri,
-          state: 'static-app',
-          grant_options: []
+          redirect_uri: location.href.split('?')[0],
+          state: 'static'
         });
-        location.href = authUrl;
+        location = url;
       }
-    })();
+    }
   </script>
 </body>
 </html>
