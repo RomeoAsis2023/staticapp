@@ -11,16 +11,83 @@
 <body>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  if (window.shopifyProductData) {
-    console.log('Shopify Products:', window.shopifyProductData);
-    
-    // Use the products data
-    window.shopifyProductData.forEach(product => {
-      console.log(`Product: ${product.title}, Price: ${product.price}`);
-    });
+// shopify-admin-products.js
+
+// Method 1: Using window.Shopify global object
+function getProductsFromShopifyAdmin() {
+  // Check if we're in Shopify admin context
+  if (typeof window.Shopify === 'undefined') {
+    console.error('Not in Shopify admin context');
+    return [];
   }
-});
+
+  // For product pages - current product data
+  if (window.product) {
+    console.log('Current product:', window.product);
+    return [window.product];
+  }
+
+  // For collection pages - products in the current view
+  if (window.products) {
+    console.log('Products in current view:', window.products);
+    return window.products;
+  }
+
+  // Using Shopify analytics if available
+  if (window.Shopify.analytics && window.Shopify.analytics.meta) {
+    console.log('Page metadata:', window.Shopify.analytics.meta);
+  }
+
+  return [];
+}
+
+// Method 2: Listen for Shopify admin events
+function setupShopifyAdminListener() {
+  document.addEventListener('shopify:section:load', function(event) {
+    // When new sections load in theme editor
+    const products = findProductsInDOM(event.target);
+    console.log('Products in new section:', products);
+  });
+
+  // Listen for product updates
+  document.addEventListener('shopify:product:update', function(event) {
+    console.log('Product updated:', event.detail);
+  });
+}
+
+// Method 3: Extract from Admin UI
+function extractProductsFromAdminUI() {
+  const products = [];
+  
+  // For products list page (/admin/products)
+  const productRows = document.querySelectorAll('[data-admin-products] tr, .product-item');
+  productRows.forEach(row => {
+    const product = extractProductFromRow(row);
+    if (product) products.push(product);
+  });
+  
+  return products;
+}
+
+function extractProductFromRow(row) {
+  try {
+    const titleElement = row.querySelector('.product-title, [data-product-title]');
+    const priceElement = row.querySelector('.product-price, [data-price]');
+    const statusElement = row.querySelector('.product-status, [data-status]');
+    
+    if (titleElement) {
+      return {
+        title: titleElement.textContent.trim(),
+        price: priceElement ? priceElement.textContent.trim() : 'N/A',
+        status: statusElement ? statusElement.textContent.trim() : 'Unknown',
+        element: row
+      };
+    }
+  } catch (error) {
+    console.error('Error extracting product from row:', error);
+  }
+  return null;
+}
 </script>
 </body>
 </html>
